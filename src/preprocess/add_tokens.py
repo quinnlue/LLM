@@ -1,5 +1,8 @@
 import sys
 import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from tqdm import tqdm
 import pandas as pd
 from src.tokenizer.tokenizer import Tokenizer
