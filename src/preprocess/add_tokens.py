@@ -25,21 +25,34 @@ def tokenize(text):
     return tokenizer.encode(text)
 
 if __name__ == "__main__":
-    validation = pd.read_parquet(os.path.join(PROJECT_ROOT, "data/clean/validation.parquet"))
+    data_folder = os.path.join(PROJECT_ROOT, "data/owt")
 
-    start_time = time.time()
+    # Process each parquet file
+    for path in os.listdir(data_folder):
+        if path.endswith(".parquet"):
+            file_path = os.path.join(data_folder, path)
+            df = pd.read_parquet(file_path)
 
-    texts = validation['text'].loc[:99].tolist()
-    processes = os.cpu_count()
-    with Pool(processes=os.cpu_count(), initializer=init_worker) as pool:
-        out = list(tqdm(pool.imap(tokenize, texts), total=len(texts)))
+            texts = df['text'].tolist()
 
-    end_time = time.time()
+            start_time = time.time()
 
-    total_tokens = sum(len(x) for x in out)
-    print(f"Time taken: {end_time - start_time} seconds")
-    print(f"Total tokens: {total_tokens}")
-    print(f"Tokens per second: {total_tokens / (end_time - start_time)}")
+            with Pool(processes=os.cpu_count(), initializer=init_worker) as pool:
+                # tokenize texts in parallel
+                tokenized_texts = list(tqdm(pool.imap(tokenize, texts), total=len(texts)))
+
+            end_time = time.time()
+
+            # Replace 'text' column with tokenized output
+            df['text'] = tokenized_texts
+            df.to_parquet(file_path)
+
+            total_tokens = sum(len(x) for x in tokenized_texts)
+            print(f"File: {path}")
+            print(f"Time taken: {end_time - start_time:.2f} seconds")
+            print(f"Total tokens: {total_tokens}")
+            print(f"Tokens per second: {total_tokens / (end_time - start_time):.2f}")
+
 
     # text = "Your input text here"
     # tokenizer = Tokenizer()
