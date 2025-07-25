@@ -9,7 +9,7 @@ from tqdm import tqdm
 import os
 from tqdm import tqdm
 import numpy as np
-
+import heapq
 
 class Tokenizer:
     def __init__(self, token_to_id_path="src/tokenizer/token_to_id.json", merges_path="src/tokenizer/merges.json", training_text=None, num_merges=21680):
@@ -75,25 +75,48 @@ class Tokenizer:
 
         return mapping, merges
 
-    def _apply_merge(self, tokens: list[str], merge: tuple[str, str]) -> list[str]:
-        merged, i = [], 0
+    def encode(self, text: str) -> np.ndarray:
+        tokens = list(text)
+
+        # Map merges to ranks for quick lookup
+        merge_ranks = {tuple(pair): i for i, pair in enumerate(self.merges)}
+
+        pairs = self._get_pairs(tokens)
+        heap = [(merge_ranks[pair], pair) for pair in pairs if pair in merge_ranks]
+        heapq.heapify(heap)
+
+        # Keep merging until no valid pairs left
+        while heap:
+            rank, pair = heapq.heappop(heap)
+            if pair not in pairs:
+                continue  # stale pair, skip
+
+            # Merge the pair
+            tokens = self._merge_pair(tokens, pair)
+
+            # Recompute pairs after merge
+            pairs = self._get_pairs(tokens)
+
+            # Rebuild the heap with only valid pairs
+            heap = [(merge_ranks[p], p) for p in pairs if p in merge_ranks]
+            heapq.heapify(heap)
+
+        return np.array([self.tok2id[tok] for tok in tokens], dtype=np.uint16)
+
+    def _get_pairs(self, tokens):
+        return set(zip(tokens, tokens[1:]))
+
+    def _merge_pair(self, tokens, pair):
+        merged = []
+        i = 0
         while i < len(tokens):
-            if i + 1 < len(tokens) and tokens[i] == merge[0] and tokens[i + 1] == merge[1]:
+            if i < len(tokens) - 1 and (tokens[i], tokens[i + 1]) == pair:
                 merged.append(tokens[i] + tokens[i + 1])
                 i += 2
             else:
                 merged.append(tokens[i])
                 i += 1
         return merged
-
-
-    def encode(self, text: str) -> np.ndarray:
-        tokens = list(text)
-
-        for merge in self.merges:
-            tokens = self._apply_merge(tokens, merge)
-
-        return np.array([self.tok2id[tok] for tok in tokens], dtype=np.uint16)
 
 
     def decode(self, token_ids):
@@ -119,5 +142,6 @@ class Tokenizer:
             return json.load(f)
 
 if __name__ == "__main__":
-    text = open(r"tokenizer\cleaned_test.txt", "r").read()
-    tokenizer = Tokenizer(token_to_id_path=None, merges_path=None, training_text=text, num_merges=21680)
+    text = "Hey gang asdfasdfhows it going?"
+    tokenizer = Tokenizer(token_to_id_path=r"src\tokenizer\token_to_id.json", merges_path=r"src\tokenizer\merges.json", training_text=text, num_merges=21680)
+    print(tokenizer.decode(tokenizer.encode(text)))
