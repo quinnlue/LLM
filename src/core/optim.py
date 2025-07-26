@@ -12,7 +12,6 @@ class Optimizer:
                 'v_t': xp.zeros_like(param.data),
                 't': 1
             }
-            print(param.name)
 
         self.lr = lr
 
@@ -66,8 +65,6 @@ class AdamW(Optimizer):
             m_t = param['m_t']
             v_t = param['v_t']
             t = param['t']
-
-            # print(type(param_tensor), type(grad), type(m_t), type(v_t), type(t))
 
             if grad.shape != param_tensor.data.shape:
                 grad = self.reduce_like(grad, param_tensor.data.shape)

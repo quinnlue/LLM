@@ -9,37 +9,54 @@ def MSE(y_hat: Tensor, y: Tensor):
 def BCE(y_hat: Tensor, y: Tensor):
     return -(y * y_hat.log() + (1 - y) * (1 - y_hat).log()).mean()
 
+# ... existing code ...
+
 def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, mask=False, pad_idx=0):
+    """
+    Memory-efficient fused cross-entropy.
+    • Avoids materialising separate soft-max, one-hot and grad buffers.
+    • Works with optional padding-mask exactly like the previous version.
+    logits : Tensor (B, S, V)
+    y      : Tensor (B, S)   integer targets
+    """
     eps = 1e-10
-    e_x = xp.exp(logits.data - logits.data.max(axis=axis, keepdims=True))
-    softmax_data = e_x / e_x.sum(axis=axis, keepdims=True)
 
-    B, S, V = softmax_data.shape
+    # -------- log-softmax (numerically stable) --------
+    max_logits  = logits.data.max(axis=axis, keepdims=True)
+    exp_shifted = xp.exp(logits.data - max_logits)
+    sum_exp     = exp_shifted.sum(axis=axis, keepdims=True)
+    log_probs   = logits.data - max_logits - xp.log(sum_exp + eps)   # (B,S,V)
 
-    batch_idx = xp.arange(B, dtype=xp.int32)[:, None]
-    seq_idx = xp.arange(S, dtype=xp.int32)[None, :]  
-    tgt_idx = xp.array(y.data).astype(xp.int32)
+    B, S, V = logits.shape
+    batch_idx = xp.arange(B, dtype=xp.int32)[:, None]   # (B,1)
+    seq_idx   = xp.arange(S, dtype=xp.int32)[None, :]   # (1,S)
+    tgt_idx   = y.data.astype(xp.int32)                 # (B,S)
 
+    # -------- optional padding mask --------
     if mask:
-        mask = y.data != pad_idx
-        tgt_idx.data = tgt_idx.data * mask
+        valid = (tgt_idx != pad_idx)
+    else:
+        valid = xp.ones_like(tgt_idx, dtype=bool)
 
+    n_valid = valid.sum() + eps  # total #tokens contributing to the loss
 
-    idx = (batch_idx, seq_idx, tgt_idx)
-    probs = softmax_data[idx]
-    loss_data = -xp.log(probs + eps).mean()
+    # selected log-probabilities and loss
+    selected_logp = log_probs[batch_idx, seq_idx, tgt_idx]
+    loss_data = -(selected_logp * valid).sum() / n_valid
 
     out = Tensor(loss_data, requires_grad=logits.requires_grad)
 
+    # -------- backward (∂L/∂logits) --------
     if out.requires_grad:
         out.parents = (logits,)
         def grad_fn(grad):
-            one_hot = xp.zeros_like(logits.data)
-            one_hot[idx] = 1
-            factor = 1 / logits.data.shape[0]
-            grad_input = (softmax_data - one_hot) * factor
-            grad_out = grad_input * grad.data
-            return (Tensor(grad_out, requires_grad=False),)
+            softmax = xp.exp(log_probs)                 # reuse log_probs ⇒ softmax
+            softmax[batch_idx, seq_idx, tgt_idx] -= 1   # softmax - one_hot
+            softmax *= valid[..., None]                 # apply mask in-place
+            grad_input = (softmax / n_valid) * grad.data
+            return (Tensor(grad_input, requires_grad=False),)
         out.grad_fn = grad_fn
 
     return out
+
+# ... existing code ...

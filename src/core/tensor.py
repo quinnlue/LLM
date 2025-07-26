@@ -3,9 +3,9 @@ from src.utils.backend import xp
 class Tensor:
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, dtype=xp.float16):
         if isinstance(data, xp.ndarray):
-            self.data = data.astype(dtype)
+            self.data = data.astype(xp.float16)
         else:
-            self.data = xp.array(data).astype(dtype)
+            self.data = xp.array(data).astype(xp.float16)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
