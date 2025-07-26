@@ -360,8 +360,16 @@ class Tensor:
 
         # propagate once to each parent
         if self.grad_fn is not None:
-            grads = self.grad_fn(self.grad)
-            for parent, g in zip(self.parents, grads):
+            # Save a local copy, then immediately sever the links so the
+            # graph from this Tensor backward is eligible for GC.
+            parents_local = self.parents
+            grads         = self.grad_fn(self.grad)
+
+            # *******  CRUCIAL: break reference cycles  *******
+            self.grad_fn = None
+            self.parents = ()
+
+            for parent, g in zip(parents_local, grads):
                 parent.backward(g, _visited)
         
     def zero_grad(self):
