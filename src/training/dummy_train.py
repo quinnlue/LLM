@@ -48,10 +48,12 @@ class Test(Module):
         x = self.head8(x, padding_mask)
         x = self.project(x)
         return x
+    
     def _log_gpu_mem(tag: str):
         if hasattr(xp, "get_default_memory_pool"):
             used = xp.get_default_memory_pool().used_bytes() / 1024**2
             print(f"    [GPU] {tag:<18}: {used:8.2f} MB")
+
     def train(self, x, y, epochs, lr):
         optimizer = AdamW(self.parameters(), lr=lr)
 
@@ -82,6 +84,9 @@ class Test(Module):
             self._log_gpu_mem("after opt.step")
 
             optimizer.zero_grad()
+            loss = loss.detach()
+            x = x.detach()
+            y = y.detach()
             self._log_gpu_mem("after zero_grad")
 
             # ---- CPU mem & cleanup ------------------------------------

@@ -15,7 +15,8 @@ class Tensor:
         self.is_cuda = xp.__name__ == "cupy"
 
 
-
+    def detach(self):
+        return Tensor(self.data.copy(), requires_grad=False)
     def mean(self, axis=None, keepdims=False):
         out = Tensor(xp.mean(self.data, axis=axis, keepdims=keepdims), requires_grad=self.requires_grad)
         if out.requires_grad:
