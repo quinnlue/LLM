@@ -67,7 +67,7 @@ def create_dummy_data(seq_len, batch_size):
 
 model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
-BATCH_SIZE = 256
+BATCH_SIZE = 100
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 
 model.train(x, y, epochs=100, lr=0.001)
