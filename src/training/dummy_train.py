@@ -1,8 +1,8 @@
 import pandas as pd
-import numpy as np
 import sys
 import os 
 from tqdm import tqdm
+from src.utils.backend import xp
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -60,7 +60,7 @@ class Test(Module):
                 
 
 def create_dummy_data(seq_len, batch_size):
-    x = np.random.randint(0, VOCAB_SIZE, (batch_size, seq_len), dtype=np.uint16)
+    x = xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len), dtype=xp.uint16)
     y = x.copy()
     return x, y
 
