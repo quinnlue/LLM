@@ -271,7 +271,10 @@ class Tensor:
     def _softmax(self, axis):
         max_values = self.data.max(axis=axis, keepdims=True)
         shifted = self.data - max_values
-        softmax_data = xp.exp(shifted) / xp.sum(xp.exp(shifted), axis=axis, keepdims=True)
+        exp_shifted = xp.exp(shifted)
+        sum_exp = exp_shifted.sum(axis=axis, keepdims=True)
+        softmax_data = exp_shifted / (sum_exp + 1e-9)  # add eps to be safe
+
         out = Tensor(softmax_data, requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
