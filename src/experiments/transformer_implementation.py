@@ -13,7 +13,6 @@ from src.tokenizer.tokenizer import Tokenizer
 import pandas as pd
 
 
-
 class Test(Module):
     def __init__(self, d_model, n_heads, vocab_size, max_seq_len, pad_idx=0):
         super().__init__()

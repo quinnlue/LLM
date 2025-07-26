@@ -11,6 +11,8 @@ class Tensor:
         self.mask = None
         self.name = name
 
+        self.is_cuda = xp.__name__ == "cupy"
+
 
 
     def mean(self, axis=None, keepdims=False):
@@ -120,7 +122,7 @@ class Tensor:
         out = Tensor(xp.transpose(self.data, axes), requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
-            inv_axes = tuple(xp.argsort(axes))
+            inv_axes = tuple(xp.array(xp.argsort(axes)))
             def grad_fn(grad):
                 return (grad.transpose(inv_axes),)
             out.grad_fn = grad_fn
