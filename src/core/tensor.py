@@ -1,7 +1,7 @@
 from src.utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, beta_1=0.9, beta_2=0.999):
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-4):
         self.data = xp.array(data).astype(xp.float16)
         self.requires_grad = requires_grad
         self.parents = ()
@@ -10,6 +10,7 @@ class Tensor:
         self.requires_mask = requires_mask
         self.mask = None
         self.name = name
+        self.eps = eps
 
         self.is_cuda = xp.__name__ == "cupy"
 
@@ -246,13 +247,12 @@ class Tensor:
         return out
     
     def log(self):
-        eps = 1e-8
-        safe_data = xp.maximum(self.data, eps)
+        safe_data = xp.maximum(self.data, self.eps)
         out = Tensor(xp.log(safe_data), requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
-                safe_self = xp.maximum(self.data, eps)
+                safe_self = xp.maximum(self.data, self.eps)
                 return (grad / Tensor(safe_self, requires_grad=False),)
             out.grad_fn = grad_fn
         return out
@@ -273,7 +273,7 @@ class Tensor:
         shifted = self.data - max_values
         exp_shifted = xp.exp(shifted)
         sum_exp = exp_shifted.sum(axis=axis, keepdims=True)
-        softmax_data = exp_shifted / (sum_exp + 1e-9)  # add eps to be safe
+        softmax_data = exp_shifted / (sum_exp + self.eps)
 
         out = Tensor(softmax_data, requires_grad=self.requires_grad)
         if out.requires_grad:

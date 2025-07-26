@@ -40,7 +40,7 @@ class Transformer(Module):
         atten_scores = q @ k.transpose((0, 1, 3, 2)) / (self.d_head ** 0.5)
 
         # edit attention scores data directly to avoid accumulating gradients
-        casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -1e9, k=1).astype(xp.float16)
+        casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -65504, k=1).astype(xp.float16)
         atten_scores.data = atten_scores.data + casual_mask
 
         if padding_mask is not None:
@@ -92,7 +92,7 @@ class Embedding(Module):
 
     def get_sentence_embedding(self, idx):
         B, T = idx.shape
-        padding_mask = xp.where(idx == self.pad_idx, -xp.inf, 0)
+        padding_mask = xp.where(idx == self.pad_idx, -65504, 0).astype(xp.float16)
         padding_mask = padding_mask.reshape(B, 1, 1, T)
         embed_vectors = self.W[idx]
         pe_slice = self.pe[:T][None, :, :]
