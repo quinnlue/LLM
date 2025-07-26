@@ -1,4 +1,4 @@
-import numpy as np
+from src.utils.backend import xp
 from src.core.tensor import Tensor
 
 class Module:
@@ -10,13 +10,16 @@ class Module:
         self._modules = {}
         self._parameters = {}
         self.is_training = True
+
+        self.is_cuda = xp.__name__ == "cupy"
+
     
     @property
     def num_parameters(self):
         return sum(p.n_params for p in self.parameters())
 
     def _build(self, input_shape: tuple):
-        dummy_input = Tensor(np.zeros(input_shape), requires_grad=False)
+        dummy_input = Tensor(xp.zeros(input_shape), requires_grad=False)
         self.forward(dummy_input)
 
     def eval(self, X: Tensor, y: Tensor, loss_fn):
@@ -134,8 +137,8 @@ class LayerNorm(Module):
     def forward(self, x: Tensor, axis=-1):
         if not self.initialized:
             dim = x.shape[self.axis]
-            self.gamma = Tensor(np.ones(dim), requires_grad=True, name='gamma')
-            self.beta = Tensor(np.zeros(dim), requires_grad=True, name='beta')
+            self.gamma = Tensor(xp.ones(dim), requires_grad=True, name='gamma')
+            self.beta = Tensor(xp.zeros(dim), requires_grad=True, name='beta')
             self.register_parameter(param=self.gamma, module_type="linear", layer_type="layer_norm", name="gamma")
             self.register_parameter(param=self.beta, module_type="linear", layer_type="layer_norm", name="beta")
             self.initialized = True
@@ -155,11 +158,11 @@ class Linear(Module):
         self.out_features = out_features
         
         # Initialize weights and register them as parameters
-        self.weight = Tensor(np.random.randn(in_features, out_features) * 0.01)
+        self.weight = Tensor(xp.random.randn(in_features, out_features) * 0.01)
         self.register_parameter(param=self.weight, module_type="linear", layer_type="linear", name="weight")
         
         if bias:
-            self.bias = Tensor(np.random.randn(out_features) * 0.01)
+            self.bias = Tensor(xp.random.randn(out_features) * 0.01)
             self.register_parameter(param=self.bias, module_type="linear", layer_type="linear", name="bias")
         # else:
         #     self.register_parameter(param=None, module_type="linear", layer_type=None, name="bias")
