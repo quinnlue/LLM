@@ -350,7 +350,8 @@ class Tensor:
                 return (Tensor(full, requires_grad=False),)
             out.grad_fn = grad_fn
 
-
+        return out
+    
     def update(self, lr: float):
         if self.name is not None:
             print(self.name)
