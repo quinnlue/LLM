@@ -2,7 +2,7 @@ from src.utils.backend import xp
 
 class Tensor:
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, beta_1=0.9, beta_2=0.999):
-        self.data = xp.array(data)
+        self.data = xp.array(data).astype(xp.float16)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
