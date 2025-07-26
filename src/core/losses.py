@@ -14,7 +14,7 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, mask=False, pad_idx=0):
     e_x = xp.exp(logits.data - logits.data.max(axis=axis, keepdims=True))
     softmax_data = e_x / e_x.sum(axis=axis, keepdims=True)
 
-    B, S, V = softmax_data.data.shape
+    B, S, V = softmax_data.shape
 
     batch_idx = xp.arange(B)[:, None]
     seq_idx = xp.arange(S)[None, :]  
