@@ -1,8 +1,11 @@
 from src.utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, beta_1=0.9, beta_2=0.999):
-        self.data = xp.array(data).astype(xp.float16)
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, dtype=xp.float16):
+        if isinstance(data, xp.ndarray):
+            self.data = data.astype(dtype)
+        else:
+            self.data = xp.array(data).astype(dtype)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
@@ -20,6 +23,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 grad_self = grad.data * xp.ones_like(self.data) / self.data.shape[axis if axis is not None else 0]
                 return (Tensor(grad_self),)
             out.grad_fn = grad_fn
@@ -30,6 +34,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad.data * (self.data == xp.max(self.data, axis=axis, keepdims=keepdims)),)
             out.grad_fn = grad_fn
         return out
@@ -39,6 +44,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad.sum(axis=axis),)
             out.grad_fn = grad_fn
         return out
@@ -76,6 +82,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (-grad,)
             out.grad_fn = grad_fn
         return out
@@ -124,6 +131,7 @@ class Tensor:
             out.parents = (self,)
             inv_axes = tuple(xp.argsort(xp.array(axes)).tolist())
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad.transpose(inv_axes),)
             out.grad_fn = grad_fn
         return out
@@ -134,6 +142,7 @@ class Tensor:
             out.parents = (self,)
             in_shape = self.data.shape
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad.reshape(in_shape),)
             out.grad_fn = grad_fn
         return out
@@ -164,6 +173,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad, -grad)
             out.grad_fn = grad_fn
         return out
@@ -200,6 +210,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad * other, grad * self)
             out.grad_fn = grad_fn
         return out
@@ -224,6 +235,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad / other, -grad * self / other ** 2)
             out.grad_fn = grad_fn
         return out
@@ -241,6 +253,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad * out,)
             out.grad_fn = grad_fn
         return out
@@ -252,6 +265,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 safe_self = xp.maximum(self.data, eps)
                 return (grad / Tensor(safe_self, requires_grad=False),)
             out.grad_fn = grad_fn
@@ -263,6 +277,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 grad_self = grad.data * sigmoid_data * (1 - sigmoid_data)
                 return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
@@ -279,6 +294,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad * softmax_data * (1 - softmax_data),)
             out.grad_fn = grad_fn
         return out
@@ -291,6 +307,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 return (grad * mask,)
             out.grad_fn = grad_fn
         return out
@@ -301,6 +318,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 grad_self = grad.data * (self.data > 0)
                 return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
@@ -312,6 +330,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 u = xp.sqrt(2 / xp.pi) * (self.data + 0.044715 * xp.power(self.data, 3))
                 grad_self = grad.data * (0.5 * (1 + xp.tanh(u)) + self.data * (1 - xp.power(xp.tanh(u), 2)) * (xp.sqrt(2 / xp.pi) + 0.044715 * 3 * xp.power(self.data, 2)))
                 return (Tensor(grad_self, requires_grad=False),)
@@ -325,12 +344,12 @@ class Tensor:
         if self.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
+                grad.requires_grad = False
                 full = xp.zeros_like(self.data)
                 full[key] = grad.data
                 return (Tensor(full, requires_grad=False),)
             out.grad_fn = grad_fn
 
-        return out
 
     def update(self, lr: float):
         if self.name is not None:
