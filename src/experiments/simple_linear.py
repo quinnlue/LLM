@@ -44,7 +44,7 @@ class Net(Module):
                 print(f"Epoch {epoch}, Loss: {loss.data}")
 
 if __name__ == "__main__":
-    df = pd.read_csv("../../src/experiments/data.csv")
+    df = pd.read_csv("src/experiments/data.csv")
     df['Quality'] = df['Quality'].apply(lambda x: 1 if x == "Good" else 0)
     X = Tensor(np.array(df.drop('Quality', axis=1).values))[:128]
     y = Tensor(np.array(df['Quality'].values).reshape((-1, 1)))[:128]
