@@ -43,8 +43,7 @@ class Optimizer:
 
     def zero_grad(self):
         for param in self.params.values():
-            if param['param'].grad is not None:
-                param['param'].grad = None
+            param['param'].zero_grad()
 
 class AdamW(Optimizer):
     def __init__(self, params, lr, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-8):
