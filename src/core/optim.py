@@ -1,5 +1,5 @@
 from src.core.module import Module, Tensor
-import numpy as np
+from src.utils.backend import xp
 
 class Optimizer:
     def __init__(self, params, lr):
@@ -8,8 +8,8 @@ class Optimizer:
         for param in params:
             self.params[param.name] = {
                 "param": param,
-                'm_t': np.zeros_like(param.data),
-                'v_t': np.zeros_like(param.data),
+                'm_t': xp.zeros_like(param.data),
+                'v_t': xp.zeros_like(param.data),
                 't': 0
             }
             print(param.name)
@@ -86,7 +86,7 @@ class AdamW(Optimizer):
 
             # param_tensor.data = param_tensor.data * (1 - self.lr * self.weight_decay)
 
-            param_tensor.data = param_tensor.data - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+            param_tensor.data = param_tensor.data - self.lr * m_hat / (xp.sqrt(v_hat) + self.eps)
 
 
             param['m_t'] = m_t
