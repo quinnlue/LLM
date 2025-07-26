@@ -16,13 +16,14 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, mask=False, pad_idx=0):
 
     B, S, V = softmax_data.shape
 
-    batch_idx = xp.arange(B)[:, None]
-    seq_idx = xp.arange(S)[None, :]  
-    tgt_idx = y.data
+    batch_idx = xp.arange(B, dtype=xp.int32)[:, None]
+    seq_idx = xp.arange(S, dtype=xp.int32)[None, :]  
+    tgt_idx = xp.array(y.data).astype(xp.int32)
 
     if mask:
         mask = y.data != pad_idx
         tgt_idx.data = tgt_idx.data * mask
+
 
     idx = (batch_idx, seq_idx, tgt_idx)
     probs = softmax_data[idx]

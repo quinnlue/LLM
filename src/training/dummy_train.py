@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from src.core.tensor import Tensor
 from src.utils.backend import xp
 from src.core.module import Module
 from src.core.losses import CrossEntropy
@@ -13,7 +14,7 @@ from src.core.optim import AdamW
 
 D_MODEL = 256
 N_HEADS = 8
-VOCAB_SIZE = 21680
+VOCAB_SIZE = 21
 MAX_SEQ_LEN = 1024
 PAD_IDX = 0
 EOS_IDX = 1
@@ -60,14 +61,14 @@ class Test(Module):
                 
 
 def create_dummy_data(seq_len, batch_size):
-    x = xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len), dtype=xp.uint16)
-    y = x.copy()
+    x = xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len)).astype(xp.int32)
+    y = Tensor(x.copy())
     return x, y
 
 
 model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
-BATCH_SIZE = 100
+BATCH_SIZE = 10
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 
 model.train(x, y, epochs=100, lr=0.001)
