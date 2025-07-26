@@ -13,9 +13,9 @@ from src.core.optim import AdamW
 
 
 D_MODEL = 256
-N_HEADS = 8
+N_HEADS = 4
 VOCAB_SIZE = 21
-MAX_SEQ_LEN = 1024
+MAX_SEQ_LEN = 10
 PAD_IDX = 0
 EOS_IDX = 1
 

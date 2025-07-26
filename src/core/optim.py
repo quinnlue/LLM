@@ -10,7 +10,7 @@ class Optimizer:
                 "param": param,
                 'm_t': xp.zeros_like(param.data),
                 'v_t': xp.zeros_like(param.data),
-                't': 0
+                't': 1
             }
             print(param.name)
 
@@ -81,12 +81,12 @@ class AdamW(Optimizer):
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad.data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad.data ** 2)
             
-            m_hat = m_t / (1 - self.beta_1 ** (t + 1))
-            v_hat = v_t / (1 - self.beta_2 ** (t + 1))
+            m_hat = m_t / max(1 - self.beta_1 ** (t + 1) + self.eps, 1e-4)
+            v_hat = v_t / max(1 - self.beta_2 ** (t + 1) + self.eps, 1e-4)
 
-            # param_tensor.data = param_tensor.data * (1 - self.lr * self.weight_decay)
+            param_tensor.data = param_tensor.data * (1 - self.lr * self.weight_decay)
 
-            param_tensor.data = param_tensor.data - self.lr * m_hat / (xp.sqrt(v_hat) + self.eps)
+            param_tensor.data = param_tensor.data - self.lr * m_hat / (xp.sqrt(v_hat) + self.eps).clip(min=1e-4)
 
 
             param['m_t'] = m_t
