@@ -122,7 +122,7 @@ class Tensor:
         out = Tensor(xp.transpose(self.data, axes), requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
-            inv_axes = tuple(xp.argsort(xp.array(axes)))
+            inv_axes = tuple(xp.argsort(xp.array(axes)).tolist())
             def grad_fn(grad):
                 return (grad.transpose(inv_axes),)
             out.grad_fn = grad_fn
