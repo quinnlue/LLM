@@ -362,6 +362,8 @@ class Tensor:
             grads = self.grad_fn(self.grad)
             for parent, g in zip(self.parents, grads):
                 parent.backward(g, _visited)
+        
+        grad.zero_grad()
 
 
     def zero_grad(self):
@@ -369,7 +371,7 @@ class Tensor:
         self.grad_fn = None
         self.parents = ()
 
-        
+            
         
 
 
