@@ -2,10 +2,10 @@ import pandas as pd
 import sys
 import os 
 from tqdm import tqdm
-from src.utils.backend import xp
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from src.utils.backend import xp
 from src.core.module import Module
 from src.core.losses import CrossEntropy
 from src.core.optim import AdamW
