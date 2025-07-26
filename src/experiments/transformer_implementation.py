@@ -43,7 +43,7 @@ class Test(Module):
         return x
 
     def train(self, x, y, epochs, lr):
-        optimizer = Standard(self.parameters(), lr=lr)
+        optimizer = AdamW(self.parameters(), lr=lr)
         for epoch in range(epochs):
             y_hat = self.forward(x)
             loss = CrossEntropy(y_hat, y, axis=-1)
@@ -55,7 +55,7 @@ class Test(Module):
                 print(f"Epoch {epoch}, Loss: {loss.data}")
                 
 if __name__ == "__main__":
-    tok = Tokenizer(token_to_id_path="../tokenizer/token_to_id.json", merges_path="../tokenizer/merges.json")
+    tok = Tokenizer(token_to_id_path="src/tokenizer/token_to_id.json", merges_path="src/tokenizer/merges.json")
 
     D_MODEL = 512
     VOCAB_SIZE = len(tok)
