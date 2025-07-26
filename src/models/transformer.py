@@ -1,4 +1,4 @@
-import numpy as np
+from src.utils.backend import xp
 from src.core.module import Module
 from src.core.tensor import Tensor
 
@@ -24,7 +24,7 @@ class Transformer(Module):
         self.ln2 = self.layer_norm(-1, module_type="transformer", layer_type="layer_norm", name="ln2")
 
     
-    def attend(self, x: Tensor, padding_mask: np.ndarray):
+    def attend(self, x: Tensor, padding_mask: xp.ndarray):
         q = self.q(x)
         k = self.k(x)
         v = self.v(x)
@@ -40,7 +40,7 @@ class Transformer(Module):
         atten_scores = q @ k.transpose((0, 1, 3, 2)) / (self.d_head ** 0.5)
 
         # edit attention scores data directly to avoid accumulating gradients
-        casual_mask = np.triu(np.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -1e9, k=1)
+        casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -1e9, k=1)
         atten_scores.data = atten_scores.data + casual_mask
 
         if padding_mask is not None:
@@ -59,7 +59,7 @@ class Transformer(Module):
 
         return output
     
-    def forward(self, x: Tensor, padding_mask: np.ndarray):
+    def forward(self, x: Tensor, padding_mask: xp.ndarray):
         x = self.ln1(x)
         atten_out =  self.attend(x, padding_mask)
 
@@ -74,7 +74,7 @@ class Transformer(Module):
 
         return x
     
-    def __call__(self, x: Tensor, padding_mask: np.ndarray=None):
+    def __call__(self, x: Tensor, padding_mask: xp.ndarray=None):
         return self.forward(x, padding_mask)
 
 class Embedding(Module):
@@ -84,15 +84,15 @@ class Embedding(Module):
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.pad_idx = pad_idx
-        self.W = Tensor(np.random.randn(vocab_size, d_model), requires_grad=True)
-        self.pe = Tensor(np.random.randn(max_seq_len, d_model), requires_grad=True)
+        self.W = Tensor(xp.random.randn(vocab_size, d_model), requires_grad=True)
+        self.pe = Tensor(xp.random.randn(max_seq_len, d_model), requires_grad=True)
 
         self.register_parameter(param=self.W, module_type="embedding", layer_type=None, name="embed")
         self.register_parameter(param=self.pe, module_type="embedding", layer_type=None, name="pe")
 
     def get_sentence_embedding(self, idx):
         B, T = idx.shape
-        padding_mask = np.where(idx == self.pad_idx, -np.inf, 0)
+        padding_mask = xp.where(idx == self.pad_idx, -xp.inf, 0)
         padding_mask = padding_mask.reshape(B, 1, 1, T)
         embed_vectors = self.W[idx]
         pe_slice = self.pe[:T][None, :, :]

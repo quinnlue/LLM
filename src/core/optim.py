@@ -93,12 +93,6 @@ class AdamW(Optimizer):
             param['v_t'] = v_t
             param['t'] = t + 1
 
-
-
-
-
-
-
 class Standard(Optimizer):
     def __init__(self, params, lr, clip_norm=1.0):
         super().__init__(params, lr)
