@@ -95,8 +95,6 @@ class Embedding(Module):
         padding_mask = xp.where(idx == self.pad_idx, -xp.inf, 0)
         padding_mask = padding_mask.reshape(B, 1, 1, T)
         embed_vectors = self.W[idx]
-        print(T)
-        print(self.pe, "asdfasdfasdfasdffd")
         pe_slice = self.pe[:T][None, :, :]
         output = embed_vectors + pe_slice
 
