@@ -3,6 +3,7 @@ import sys
 import os 
 from tqdm import tqdm
 import tracemalloc
+import gc
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -47,44 +48,55 @@ class Test(Module):
         x = self.head8(x, padding_mask)
         x = self.project(x)
         return x
-
+    def _log_gpu_mem(tag: str):
+        if hasattr(xp, "get_default_memory_pool"):
+            used = xp.get_default_memory_pool().used_bytes() / 1024**2
+            print(f"    [GPU] {tag:<18}: {used:8.2f} MB")
     def train(self, x, y, epochs, lr):
         optimizer = AdamW(self.parameters(), lr=lr)
 
         for epoch in tqdm(range(epochs)):
-            # --- Start CPU memory tracking ---
+            print(f"\n=== Epoch {epoch} ===")
+
+            # ---- set up memory tracking --------------------------------
             tracemalloc.start()
-            # --- Start GPU memory tracking ---
             if hasattr(xp, "get_default_memory_pool"):
-                mem_pool = xp.get_default_memory_pool()
-                mem_pool.free_all_blocks()
-                before_gpu = mem_pool.used_bytes()
-            else:
-                before_gpu = 0
+                xp.get_default_memory_pool().free_all_blocks()
 
-            # Forward + Backward
+            self._log_gpu_mem("start")
+
+            # ---- forward ----------------------------------------------
             y_hat = self.forward(x)
+            self._log_gpu_mem("after forward")
+
+            # ---- loss --------------------------------------------------
             loss = CrossEntropy(y_hat, y, axis=-1)
+            self._log_gpu_mem("after loss")
 
+            # ---- backward ---------------------------------------------
             loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+            self._log_gpu_mem("after backward")
 
-            # --- Stop memory tracking ---
+            # ---- optimiser --------------------------------------------
+            optimizer.step()
+            self._log_gpu_mem("after opt.step")
+
+            optimizer.zero_grad()
+            self._log_gpu_mem("after zero_grad")
+
+            # ---- CPU mem & cleanup ------------------------------------
             current_cpu, peak_cpu = tracemalloc.get_traced_memory()
             tracemalloc.stop()
 
+            gc.collect()  # force Python GC
             if hasattr(xp, "get_default_memory_pool"):
-                after_gpu = mem_pool.used_bytes()
-                used_gpu = after_gpu - before_gpu
-            else:
-                used_gpu = 0
+                xp.get_default_memory_pool().free_all_blocks()
+            self._log_gpu_mem("after gc")
 
-            # --- Print epoch info ---
-            print(f"[Epoch {epoch}]")
-            print(f"  Loss           : {loss.data}")
-            print(f"  CPU Memory     : Current = {current_cpu / 1024**2:.2f} MB | Peak = {peak_cpu / 1024**2:.2f} MB")
-            print(f"  GPU Memory Used: {used_gpu / 1024**2:.2f} MB\n")
+            # ---- summary ----------------------------------------------
+            print(f"    Loss                 : {loss.data}")
+            print(f"    CPU  current / peak  : {current_cpu / 1024**2:.2f} MB | "
+                  f"{peak_cpu / 1024**2:.2f} MB")
 
              
 
