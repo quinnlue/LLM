@@ -84,8 +84,8 @@ class Embedding(Module):
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.pad_idx = pad_idx
-        self.W = Tensor(xp.random.randn(vocab_size, d_model, dtype=xp.float16), requires_grad=True)
-        self.pe = Tensor(xp.random.randn(max_seq_len, d_model, dtype=xp.float16), requires_grad=True)
+        self.W = Tensor(xp.random.randn(vocab_size, d_model).astype(xp.float16), requires_grad=True)
+        self.pe = Tensor(xp.random.randn(max_seq_len, d_model).astype(xp.float16), requires_grad=True)
 
         self.register_parameter(param=self.W, module_type="embedding", layer_type=None, name="embed")
         self.register_parameter(param=self.pe, module_type="embedding", layer_type=None, name="pe")
