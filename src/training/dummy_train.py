@@ -50,19 +50,42 @@ class Test(Module):
 
     def train(self, x, y, epochs, lr):
         optimizer = AdamW(self.parameters(), lr=lr)
+
         for epoch in tqdm(range(epochs)):
+            # --- Start CPU memory tracking ---
             tracemalloc.start()
+            # --- Start GPU memory tracking ---
+            if hasattr(xp, "get_default_memory_pool"):
+                mem_pool = xp.get_default_memory_pool()
+                mem_pool.free_all_blocks()
+                before_gpu = mem_pool.used_bytes()
+            else:
+                before_gpu = 0
+
+            # Forward + Backward
             y_hat = self.forward(x)
             loss = CrossEntropy(y_hat, y, axis=-1)
-    
+
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            current, peak = tracemalloc.get_traced_memory()
+
+            # --- Stop memory tracking ---
+            current_cpu, peak_cpu = tracemalloc.get_traced_memory()
             tracemalloc.stop()
-            if epoch % 1 == 0:
-                print(f"Current: {current / 1024**2:.2f} MB; Peak: {peak / 1024**2:.2f} MB")
-                print(f"Epoch {epoch}, Loss: {loss.data}")
+
+            if hasattr(xp, "get_default_memory_pool"):
+                after_gpu = mem_pool.used_bytes()
+                used_gpu = after_gpu - before_gpu
+            else:
+                used_gpu = 0
+
+            # --- Print epoch info ---
+            print(f"[Epoch {epoch}]")
+            print(f"  Loss           : {loss.data}")
+            print(f"  CPU Memory     : Current = {current_cpu / 1024**2:.2f} MB | Peak = {peak_cpu / 1024**2:.2f} MB")
+            print(f"  GPU Memory Used: {used_gpu / 1024**2:.2f} MB\n")
+
              
 
 def create_dummy_data(seq_len, batch_size):
