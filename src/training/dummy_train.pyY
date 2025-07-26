@@ -2,7 +2,6 @@ import pandas as pd
 import sys
 import os 
 from tqdm import tqdm
-import tracemalloc
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -51,19 +50,15 @@ class Test(Module):
     def train(self, x, y, epochs, lr):
         optimizer = AdamW(self.parameters(), lr=lr)
         for epoch in tqdm(range(epochs)):
-            tracemalloc.start()
             y_hat = self.forward(x)
             loss = CrossEntropy(y_hat, y, axis=-1)
     
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            current, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
             if epoch % 1 == 0:
-                print(f"Current: {current / 1024**2:.2f} MB; Peak: {peak / 1024**2:.2f} MB")
                 print(f"Epoch {epoch}, Loss: {loss.data}")
-             
+                
 
 def create_dummy_data(seq_len, batch_size):
     x = xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len)).astype(xp.int32)
@@ -73,7 +68,7 @@ def create_dummy_data(seq_len, batch_size):
 
 model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
-BATCH_SIZE = 8
+BATCH_SIZE = 10
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 
 model.train(x, y, epochs=100, lr=0.001)
