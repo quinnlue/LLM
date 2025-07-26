@@ -49,7 +49,7 @@ class Test(Module):
         x = self.project(x)
         return x
     
-    def _log_gpu_mem(tag: str):
+    def _log_gpu_mem(self, tag: str):
         if hasattr(xp, "get_default_memory_pool"):
             used = xp.get_default_memory_pool().used_bytes() / 1024**2
             print(f"    [GPU] {tag:<18}: {used:8.2f} MB")
