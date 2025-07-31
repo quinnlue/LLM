@@ -1,3 +1,5 @@
+import os
+import numpy as np
 from src.utils.backend import xp
 from src.core.tensor import Tensor
 
@@ -13,6 +15,11 @@ class Module:
 
         self.is_cuda = xp.__name__ == "cupy"
 
+    def save_checkpoint(self, optimizer, path):
+        optimizer._save_state(path)
+
+    def load_checkpoint(self, optimizer, path):
+        optimizer._load_state(path)
     
     @property
     def num_parameters(self):
@@ -61,8 +68,9 @@ class Module:
 
         return layer_name
 
-    def get_layer_type_index(self, layer_type):
-        return sum(1 for l in self.pipeline if l["type"] == layer_type)
+    def get_layer_type_index(self, module_type):
+        return sum(1 for l in self.pipeline if l["type"] == module_type)
+    
     
     def add_module(self, name, module, module_type):
         self.pipeline.append({"name": name, "type": module_type})
@@ -70,6 +78,7 @@ class Module:
     
     def register_parameter(self, param, module_type, layer_type=None, name=None):
         layer_name = self.get_param_name(module_type, layer_type, name)
+
 
         if layer_name in self._parameters:
             raise ValueError(f"Parameter {layer_name} already registered")
@@ -126,7 +135,7 @@ class Module:
 
 
 class LayerNorm(Module):
-    def __init__(self, axis, eps=1e-8):
+    def __init__(self, axis, eps=1e-4):
         super().__init__()
         self.eps = eps
         self.axis = axis

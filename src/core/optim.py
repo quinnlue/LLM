@@ -1,19 +1,35 @@
 from src.core.module import Module, Tensor
 from src.utils.backend import xp
+import numpy as np
+import os
+from src.utils.lr_scheduler import LRScheduler
 
 class Optimizer:
-    def __init__(self, params, lr):
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
+        self._raw_params = params
         self.params = {}
-
-        for param in params:
+        for param in self._raw_params:
             self.params[param.name] = {
                 "param": param,
-                'm_t': xp.zeros_like(param.data),
-                'v_t': xp.zeros_like(param.data),
-                't': 1
             }
 
+
+        self.lr_scheduler = lr if isinstance(lr, LRScheduler) else None
         self.lr = lr
+        self.t = 0
+
+        self.clip_norm = clip_norm
+        self.is_cuda = xp.__name__ == "cupy"
+
+
+    def get_lr(self, step: int):
+        if self.lr_scheduler is not None:
+            return self.lr_scheduler(step)
+        else:
+            return self.lr
+
+    def set_lr_scheduler(self, lr_scheduler: LRScheduler):
+        self.lr_scheduler = lr_scheduler
 
     def reduce_like(self, grad: Tensor, target_shape: tuple) -> Tensor:
         gshape = grad.data.shape
@@ -46,14 +62,58 @@ class Optimizer:
             if param['param'].grad is not None:
                 param['param'].grad = None
 
+    def _save_params(self, path):
+        # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
+        os.makedirs(path, exist_ok=True)
+        os.makedirs(f"{path}/model", exist_ok=True)
+        for i, param in enumerate(self.params.values()):
+            np.save(f"{path}/model/param_{i:02d}.npy", param['param'].data)
+
+        np.save(f"{path}/optim/t.npy", self.t)
+
+    def _load_params(self, path):
+        # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
+        for i, param in enumerate(self.params.values()):
+            param['param'].data = np.load(f"{path}/model/param_{i:02d}.npy")
+
 class AdamW(Optimizer):
-    def __init__(self, params, lr, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-8):
-        super().__init__(params, lr)
-        self.clip_norm = clip_norm
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-4):
+        super().__init__(params, lr=lr, clip_norm=clip_norm)
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.eps = eps
+
+        for param in self._raw_params:
+            self.params[param.name] = {
+                "param": param,
+                'm_t': xp.zeros_like(param.data),
+                'v_t': xp.zeros_like(param.data),
+            }
+
+    def _save_state(self, path):
+        os.makedirs(path, exist_ok=True)
+        os.makedirs(f"{path}/optim", exist_ok=True)
+        os.makedirs(f"{path}/optim/m_t", exist_ok=True)
+        os.makedirs(f"{path}/optim/v_t", exist_ok=True)
+
+        self._save_params(path)
+        for i, param in enumerate(self.params.values()):
+            np.save(f"{path}/optim/m_t/m_t_{i:02d}.npy", param['m_t'])
+            np.save(f"{path}/optim/v_t/v_t_{i:02d}.npy", param['v_t'])
+
+
+
+
+    def _load_state(self, path):
+        self._load_params(path)
+        for i, param in enumerate(self.params.values()):
+            param['m_t'] = xp.array(np.load(f"{path}/optim/m_t/m_t_{i:02d}.npy"))
+            param['v_t'] = xp.array(np.load(f"{path}/optim/v_t/v_t_{i:02d}.npy"))
+
+        self.t = int(np.load(f"{path}/optim/t.npy"))
+
+
 
     def step(self):
         for param in self.params.values():
@@ -64,7 +124,6 @@ class AdamW(Optimizer):
             grad = param['param'].grad
             m_t = param['m_t']
             v_t = param['v_t']
-            t = param['t']
 
             if grad.shape != param_tensor.data.shape:
                 grad = self.reduce_like(grad, param_tensor.data.shape)
@@ -78,20 +137,20 @@ class AdamW(Optimizer):
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad.data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad.data ** 2)
             
-            m_hat = m_t / max(1 - self.beta_1 ** (t + 1) + self.eps, 1e-4)
-            v_hat = v_t / max(1 - self.beta_2 ** (t + 1) + self.eps, 1e-4)
+            m_hat = m_t / max(1 - self.beta_1 ** (self.t + 2) + self.eps, 1e-4)
+            v_hat = v_t / max(1 - self.beta_2 ** (self.t + 2) + self.eps, 1e-4)
 
-            param_tensor.data = param_tensor.data * (1 - self.lr * self.weight_decay)
+            param_tensor.data = param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
 
-            param_tensor.data = param_tensor.data - self.lr * m_hat / (xp.sqrt(v_hat) + self.eps).clip(min=1e-4)
+            param_tensor.data = param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + self.eps).clip(min=1e-4)
 
 
             param['m_t'] = m_t
             param['v_t'] = v_t
-            param['t'] = t + 1
+            self.t += 1
 
 class Standard(Optimizer):
-    def __init__(self, params, lr, clip_norm=1.0):
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
         super().__init__(params, lr)
         self.clip_norm = clip_norm
 
@@ -101,5 +160,5 @@ class Standard(Optimizer):
                 continue
 
             param['param'].grad = self.reduce_like(param['param'].grad, param['param'].data.shape)
-            param['param'].data -= self.lr * param['param'].grad.data
+            param['param'].data -= self.get_lr(self.t) * param['param'].grad.data
 

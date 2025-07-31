@@ -41,11 +41,11 @@ class Transformer(Module):
 
         # edit attention scores data directly to avoid accumulating gradients
         casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -65504, k=1).astype(xp.float16)
-        atten_scores.data = atten_scores.data + casual_mask
+        atten_scores.data += casual_mask
 
         if padding_mask is not None:
             # similar, avoid grads
-            atten_scores.data = atten_scores.data + padding_mask
+            atten_scores.data += padding_mask
 
         atten_probs = self.softmax(atten_scores, axis=3)
 
@@ -63,14 +63,14 @@ class Transformer(Module):
         x = self.ln1(x)
         atten_out =  self.attend(x, padding_mask)
 
-        x = x + atten_out
+        x += atten_out
         x = self.ln2(x)
 
         x_mlp = self.proj_up(x)
         x_mlp = self.gelu(x_mlp)
         x_mlp = self.proj_down(x_mlp)
 
-        x = x + x_mlp
+        x += x_mlp
 
         return x
     

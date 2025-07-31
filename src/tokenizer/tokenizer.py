@@ -76,6 +76,7 @@ class Tokenizer:
         return mapping, merges
 
     def encode(self, text: str) -> np.ndarray:
+        text = self.filter_text(text)
         tokens = list(text)
 
         # Map merges to ranks for quick lookup

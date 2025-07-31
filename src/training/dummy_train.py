@@ -15,7 +15,7 @@ from src.core.optim import AdamW
 
 
 D_MODEL = 1024
-N_HEADS = 4
+N_HEADS = D_MODEL // 64
 VOCAB_SIZE = 21680
 MAX_SEQ_LEN = 1024
 PAD_IDX = 0
@@ -84,9 +84,7 @@ class Test(Module):
             self._log_gpu_mem("after opt.step")
 
             optimizer.zero_grad()
-            loss = loss.detach()
-            x = x.detach()
-            y = y.detach()
+
             self._log_gpu_mem("after zero_grad")
 
             # ---- CPU mem & cleanup ------------------------------------

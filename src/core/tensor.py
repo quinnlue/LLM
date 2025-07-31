@@ -115,9 +115,7 @@ class Tensor:
         return self + other
     
     def __iadd__(self, other):
-        if not isinstance(other, Tensor):
-            other = Tensor(other, requires_grad=False)
-        self.data += other.data
+        self.data += other.data if isinstance(other, Tensor) else other
         return self
     
     def transpose(self, axes):
