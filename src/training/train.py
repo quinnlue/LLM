@@ -10,6 +10,7 @@ from src.preprocess.dataloader import DataLoader
 from src.preprocess.dataloader import Dataset
 from src.tokenizer.tokenizer import Tokenizer
 from src.utils.lr_scheduler import LRScheduler
+from src.utils.backend import xp
 
 from tqdm import tqdm
 import time
@@ -28,7 +29,7 @@ CHECKPOINT_DIR = r"checkpoints"
 VOCAB_SIZE = len(Tokenizer().tok2id)
 D_MODEL = 1024
 N_HEADS = D_MODEL // 64
-MAX_SEQ_LEN = 2096 # CLIP TO 2048 DURING INFERENCE
+MAX_SEQ_LEN = 2112 # CLIP TO 2048 DURING INFERENCE
 PAD_IDX = 0
 EOS_IDX = 1
 EXPECTED_STEPS = 86400
@@ -65,34 +66,53 @@ class Model(Module):
         return x
     
     def evaluate(self):
-        pass
+        dl = DataLoader(VAL_DIR, x_column="x", is_binned=True, bin_column="bin")
+        losses = []
+        for batch in tqdm(dl, desc="Evaluating"):
+            batch.requires_grad = False
+            y_hat = self.forward(batch[:,:-1])
+            loss = CrossEntropy(y_hat, batch[:,1:])
+            losses.append(loss.item())
+        return xp.mean(xp.array(losses))
 
+    def save_checkpoint(self, optimizer):
+        val_loss = self.evaluate()
+        cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        self.save_checkpoint(optimizer, cp_path)
+        
     def train(self, epochs: int, dataloader: DataLoader, optimizer):
         last_cp_time = time.perf_counter()
 
-        for _ in range(epochs):
-            for batch in tqdm(dataloader, desc="Training"):
-                y_hat = self.forward(batch.src)
-                loss = CrossEntropy(y_hat, batch.tgt)
+        for i in range(epochs):
+            for batch in tqdm(dataloader, desc=f"Training epoch {i}"):
+                y_hat = self.forward(batch[:,:-1])
+                loss = CrossEntropy(y_hat, batch[:,1:])
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
-
                 # checkpointing & validation
                 if time.perf_counter() - last_cp_time > self.checkpoint_interval_seconds:
-                    val_loss = self.evaluate()
-                    cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-                    self.save_checkpoint(optimizer, cp_path)
+                    self.save_checkpoint(optimizer, CHECKPOINT_DIR)
                     last_cp_time = time.perf_counter()
+
+                    
+
+        
 
 
 
 if __name__ == "__main__":
-    optimizer = AdamW()
-    lr_scheduler = LRScheduler(max_steps=EXPECTED_STEPS, warmup_steps=100, base_lr=3e-4, min_lr=1e-5, max_lr=1e-3)
+    scheduler = LRScheduler(
+        warmup_steps=1000,
+        total_steps=EXPECTED_STEPS,
+        min_lr=1e-5,
+        max_lr=3e-4,
+        final_lr=1e-6,
+    )
     model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS)
+    optimizer = AdamW(model.parameters(), lr_scheduler=scheduler)
 
-
-    model.train(epochs=3, dataloader=DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin"), optimizer=optimizer)
+    dl = DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin", max_tokens=1024)
+    model.train(epochs=3, dataloader=dl, optimizer=optimizer)
 

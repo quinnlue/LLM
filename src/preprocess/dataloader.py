@@ -2,6 +2,7 @@ import sys
 import os
 import ast
 import random
+import warnings
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -19,20 +20,16 @@ class Dataset:
         self.x = self.df[self.x_column].values
 
     def load_data(self):
-        if self.path.endswith(".parquet"):
-            return pd.read_parquet(self.path)
-        elif self.path.endswith(".csv"):
-            raise NotImplementedError("CSV files are not supported yet")
-        else:
-            raise ValueError("Invalid file extension (accepted: .parquet)")
+        return pd.read_parquet(self.path)
+
 
 class DataLoader:
-    def __init__(self, path, x_column, is_binned=False, bin_column=None):
+    def __init__(self, path, x_column, is_binned=False, bin_column=None, max_tokens=1024):
         self.path = path
         self.is_binned = is_binned
         self.bin_column = bin_column
         self.x_column = x_column
-
+        self.max_tokens = max_tokens
         if self.is_binned and self.bin_column is None:
             raise ValueError("bin_column must be provided if is_binned is True")
             
@@ -54,19 +51,25 @@ class DataLoader:
             
             for f in files:
                 file_path = os.path.join(self.path, f)
-                yield Dataset(file_path, self.x_column, shuffle_rows=shuffle_rows)
+                if file_path.endswith(".parquet"):
+                    file_path = os.path.join(self.path, f)
+                    yield Dataset(file_path, self.x_column, shuffle_rows=shuffle_rows)
+                else:
+                    warnings.warn(f"Skipping {file_path} because it is not a .parquet file")
+
         else:
             print(f"Loading dataset from file: {self.path}")
             yield Dataset(self.path, self.x_column)
             
-    def get_batches(self, shuffle: bool = True, max_tokens: int = 1024):
+    def get_batches(self, shuffle: bool = True):
         if not self.is_binned:
             raise NotImplementedError("Only is_binned=True is supported")
 
         for dataset in self._get_data(shuffle_files=shuffle, shuffle_rows=shuffle):
+            # These are stored in RAM
             batches = []
             for _, group in dataset.df.groupby(self.bin_column):
-                examples_per_batch = max(1, max_tokens // len(group[self.x_column].values[0])) # we can index 0 because this will raise downstream if the lengths of the batches are different
+                examples_per_batch = max(1, self.max_tokens // len(group[self.x_column].values[0])) # we can index 0 because this will raise downstream if the lengths of the batches are different
 
                 for start in range(0, len(group), examples_per_batch):
                     if len(group) - start < examples_per_batch:
@@ -83,12 +86,6 @@ class DataLoader:
             for batch in batches:
                 yield batch
 
-if __name__ == "__main__":
-    loader = DataLoader(r"src/preprocess/parquet_data", x_column="x", is_binned=True, bin_column="bin")
-    
-
-    for i, batch in enumerate(loader):
-        print(i, batch.shape)
 
 
 
