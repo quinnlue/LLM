@@ -8,9 +8,10 @@ from src.core.optim import AdamW
 from src.core.tensor import Tensor
 from src.preprocess.dataloader import DataLoader
 from src.preprocess.dataloader import Dataset
-from src.tokenizer.tokenizer import Tokenizer
+from src.tokenizer.tokenizer import tokenizer
 from src.utils.lr_scheduler import LRScheduler
 from src.utils.backend import xp
+from src.utils.logger import train_logger, val_logger
 
 from tqdm import tqdm
 import time
@@ -26,7 +27,7 @@ CHECKPOINT_DIR = r"checkpoints"
 
 # MODEL HYPERPARAMETERS ------------------------------
 
-VOCAB_SIZE = len(Tokenizer().tok2id)
+VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 1024
 N_HEADS = D_MODEL // 64
 MAX_SEQ_LEN = 2112 # CLIP TO 2048 DURING INFERENCE
@@ -75,8 +76,9 @@ class Model(Module):
             losses.append(loss.item())
         return xp.mean(xp.array(losses))
 
-    def save_checkpoint(self, optimizer):
+    def checkpoint(self, optimizer):
         val_loss = self.evaluate()
+        val_logger.info(f"Validation loss: {val_loss}")
         cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.save_checkpoint(optimizer, cp_path)
         
@@ -90,17 +92,12 @@ class Model(Module):
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
+                train_logger.info(f"Training loss: {loss.item()}")
 
                 # checkpointing & validation
                 if time.perf_counter() - last_cp_time > self.checkpoint_interval_seconds:
-                    self.save_checkpoint(optimizer, CHECKPOINT_DIR)
+                    self.checkpoint(optimizer, CHECKPOINT_DIR)
                     last_cp_time = time.perf_counter()
-
-                    
-
-        
-
-
 
 if __name__ == "__main__":
     scheduler = LRScheduler(
