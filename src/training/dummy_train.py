@@ -14,10 +14,10 @@ from src.core.losses import CrossEntropy
 from src.core.optim import AdamW
 
 
-D_MODEL = 1024
-N_HEADS = D_MODEL // 64
-VOCAB_SIZE = 21680
-MAX_SEQ_LEN = 1024
+D_MODEL = 16
+N_HEADS = D_MODEL // 4
+VOCAB_SIZE = 16
+MAX_SEQ_LEN = 16
 PAD_IDX = 0
 EOS_IDX = 1
 
@@ -55,7 +55,6 @@ class Test(Module):
             print(f"    [GPU] {tag:<18}: {used:8.2f} MB")
 
     def train(self, x, y, epochs, lr):
-        optimizer = AdamW(self.parameters(), lr=lr)
 
         for epoch in tqdm(range(epochs)):
             print(f"\n=== Epoch {epoch} ===")
@@ -79,27 +78,27 @@ class Test(Module):
             loss.backward()
             self._log_gpu_mem("after backward")
 
-            # ---- optimiser --------------------------------------------
-            optimizer.step()
-            self._log_gpu_mem("after opt.step")
+            # # ---- optimiser --------------------------------------------
+            # optimizer.step()
+            # self._log_gpu_mem("after opt.step")
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
-            self._log_gpu_mem("after zero_grad")
+            # self._log_gpu_mem("after zero_grad")
 
-            # ---- CPU mem & cleanup ------------------------------------
-            current_cpu, peak_cpu = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
+            # # ---- CPU mem & cleanup ------------------------------------
+            # current_cpu, peak_cpu = tracemalloc.get_traced_memory()
+            # tracemalloc.stop()
 
-            gc.collect()  # force Python GC
-            if hasattr(xp, "get_default_memory_pool"):
-                xp.get_default_memory_pool().free_all_blocks()
-            self._log_gpu_mem("after gc")
+            # gc.collect()  # force Python GC
+            # if hasattr(xp, "get_default_memory_pool"):
+            #     xp.get_default_memory_pool().free_all_blocks()
+            # self._log_gpu_mem("after gc")
 
-            # ---- summary ----------------------------------------------
-            print(f"    Loss                 : {loss.data}")
-            print(f"    CPU  current / peak  : {current_cpu / 1024**2:.2f} MB | "
-                  f"{peak_cpu / 1024**2:.2f} MB")
+            # # ---- summary ----------------------------------------------
+            # print(f"    Loss                 : {loss.data}")
+            # print(f"    CPU  current / peak  : {current_cpu / 1024**2:.2f} MB | "
+            #       f"{peak_cpu / 1024**2:.2f} MB")
 
              
 

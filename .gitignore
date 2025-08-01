@@ -184,14 +184,14 @@ cython_debug/
 *.safetensors
 
 # Data files (uncomment if you don't want to track data)
-# *.csv
-# *.json
-# *.parquet
-# *.feather
-# *.h5
-# *.hdf5
-# *.npy
-# *.npz
+*.csv
+*.json
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.npy
+*.npz
 
 # Large data directories
 data/

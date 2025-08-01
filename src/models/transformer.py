@@ -3,7 +3,7 @@ from src.core.module import Module
 from src.core.tensor import Tensor
 
 class Transformer(Module):
-    def __init__(self, d_model, n_heads, pad_idx=0, mlp_ratio=4):
+    def __init__(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_dict=None):
         super().__init__()
         self.pad_idx = pad_idx
         self.d_head = d_model // n_heads
@@ -11,17 +11,17 @@ class Transformer(Module):
 
         if self.d_head * n_heads != d_model:
             raise ValueError(f"d_model must be divisible by n_heads, but got {d_model} and {n_heads}")
-        
-        self.q = self.linear(d_model, d_model, module_type="transformer", layer_type="linear", name="q")
-        self.k = self.linear(d_model, d_model, module_type="transformer", layer_type="linear", name="k")
-        self.v = self.linear(d_model, d_model, module_type="transformer", layer_type="linear", name="v")
-        self.o = self.linear(d_model, d_model, module_type="transformer", layer_type="linear", name="o")
-        
-        self.proj_up = self.linear(d_model, d_model * mlp_ratio, module_type="transformer", layer_type="linear", name="proj_up")
-        self.proj_down = self.linear(d_model * mlp_ratio, d_model, module_type="transformer", layer_type="linear", name="proj_down")
+        # (self, in_features, out_features, module_dict, layer_dict, bias=True)
+        self.q = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="q")
+        self.k = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="k")
+        self.v = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="v")
+        self.o = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="o")
 
-        self.ln1 = self.layer_norm(-1, module_type="transformer", layer_type="layer_norm", name="ln1")
-        self.ln2 = self.layer_norm(-1, module_type="transformer", layer_type="layer_norm", name="ln2")
+        self.proj_up = self.linear(d_model, d_model * mlp_ratio, module_dict=module_dict, layer_type="linear", name="proj_up")
+        self.proj_down = self.linear(d_model * mlp_ratio, d_model, module_dict=module_dict, layer_type="linear", name="proj_down")
+
+        self.ln1 = self.layer_norm(axis=-1, module_dict=module_dict, name="ln1")
+        self.ln2 = self.layer_norm(axis=-1, module_dict=module_dict, name="ln2")
 
     
     def attend(self, x: Tensor, padding_mask: xp.ndarray):
@@ -78,7 +78,7 @@ class Transformer(Module):
         return self.forward(x, padding_mask)
 
 class Embedding(Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx=0):
+    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx=0, module_dict=None, layer_dict=None):
         super().__init__()
         self.max_seq_len = max_seq_len
         self.vocab_size = vocab_size
@@ -87,8 +87,8 @@ class Embedding(Module):
         self.W = Tensor(xp.random.randn(vocab_size, d_model).astype(xp.float16), requires_grad=True)
         self.pe = Tensor(xp.random.randn(max_seq_len, d_model).astype(xp.float16), requires_grad=True)
 
-        self.register_parameter(param=self.W, module_type="embedding", layer_type=None, name="embed")
-        self.register_parameter(param=self.pe, module_type="embedding", layer_type=None, name="pe")
+        self.register_parameter(param=self.W, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="embed")
+        self.register_parameter(param=self.pe, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="pe")
 
     def get_sentence_embedding(self, idx):
         B, T = idx.shape

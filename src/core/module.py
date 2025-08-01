@@ -4,17 +4,37 @@ from src.utils.backend import xp
 from src.core.tensor import Tensor
 
 class Module:
-    def __init__(self):
-        # pipeline is a list of high level dicts of semantic names of the "layers" in the model 
-        # (e.g. {name: "embedding", type: "embedding"}, {name: "head1", type: "transformer"}, {name: "project", type: "linear"})
-        self.pipeline = []
+    def __init__(self, architecture={}):
+        self.architecture = architecture
 
-        self._modules = {}
-        self._parameters = {}
+        """
+        architecture:
+        {
+            "module_type_1": {
+                "type": "module_type_1",
+                "layers": [{"type": "layer_type_1", "name": "layer_name_1", "params": [{"type": "param_type_1", "name": "param_name_1", "param": "param_value_1"}]}]
+            },
+            "module_type_2": {
+                "type": "module_type_2",
+                "layers": [{"type": "layer_type_2", "name": "layer_name_2", "params": [{"type": "param_type_2", "name": "param_name_2", "param": "param_value_2"}]}]
+            }
+        }
+        """
+
         self.is_training = True
-
         self.is_cuda = xp.__name__ == "cupy"
 
+    def __str__(self):
+        lines = ["Architecture:"]
+        for module_name, module in self.architecture.items():
+            lines.append(f"  {module_name} ({module['type']}):")
+            for layer in module["layers"]:
+                lines.append(f"    {layer['name']} ({layer['type']}):")
+                for p in layer["params"]:
+                    t = p["param"]
+                    lines.append(f"      {p['name']}: shape={tuple(t.shape)}, dtype={t.dtype}")
+        return "\n".join(lines)
+    
     def save_checkpoint(self, optimizer, path):
         optimizer._save_state(path)
 
@@ -44,69 +64,67 @@ class Module:
         raise NotImplementedError("Child class must implement forward()")
     
     def parameters(self):
-        params = []
-        
-        for param in self._parameters.values():
-            if param is not None:
-                params.append(param)
-        
-        for module in self._modules.values():
-            if hasattr(module, 'parameters'):
-                params.extend(module.parameters())
+        params = {}
+
+        for module in self.architecture.values():
+            for layer in module["layers"]:
+                for param in layer["params"]:
+                    params[param["name"]] = param["param"]
         
         return params
     
-    def get_param_name(self, module_type, layer_type, name="", is_layer=True):
-        index = self.get_layer_type_index(layer_type)
-        if is_layer:
-            layer_name = f"{module_type}_{index}_{layer_type}"
-        else:
-            layer_name = f"{module_type}_{index}"
+    def get_param_name(self, module_dict, layer_type, name=""):
+        return f"{module_dict['type']}_{self.get_module_type_index(module_dict['type'])}_{layer_type}_{self.get_layer_type_index(module_dict['layers'], layer_type)}_{name}"
 
-        if name:
-            layer_name += f"_{name}"
-
-        return layer_name
-
-    def get_layer_type_index(self, module_type):
-        return sum(1 for l in self.pipeline if l["type"] == module_type)
+    def get_layer_type_index(self, layers, layer_type):
+        return sum(1 for l in layers if l["type"] == layer_type)
     
+    def get_module_type_index(self, module_type):
+        return sum(1 for m in self.architecture.values() if m["type"] == module_type)
     
-    def add_module(self, name, module, module_type):
-        self.pipeline.append({"name": name, "type": module_type})
-        self._modules[name] = module
-    
-    def register_parameter(self, param, module_type, layer_type=None, name=None):
-        layer_name = self.get_param_name(module_type, layer_type, name)
-
-
-        if layer_name in self._parameters:
-            raise ValueError(f"Parameter {layer_name} already registered")
+    def register_module(self, module_type: str):
+        module_name = f"{module_type}_{self.get_module_type_index(module_type)}"
+        if module_name in self.architecture:
+            raise ValueError(f"Module {module_name} already registered")
         
-        self._parameters[layer_name] = param
-        if param is not None:
-            param.name = layer_name
+        self.architecture[module_name] = {"type": module_type, "layers": []}
+        return self.architecture[module_name]
 
-    def layer_norm(self, axis=-1, module_type="linear", layer_type="layernorm", name=None):
-        layer = LayerNorm(axis)
-        self.add_module(self.get_param_name(module_type, layer_type, name, is_layer=False), layer, module_type)
-        return layer
+    def register_layer(self, layer_type, module_dict, name):
+        module_dict["layers"].append({"type": layer_type, "name": name, "params": []})
+        return module_dict["layers"][-1]
+    
+    def register_parameter(self, param, module_dict,layer_type, layer_dict, name):
+        full_name = self.get_param_name(module_dict, layer_type, name)
+        layer_dict["params"].append({"type": param, "name": full_name, "param": param})
+        
 
-    def linear(self, in_features, out_features, bias=True, module_type="linear", layer_type="linear", name=None):
-        layer = Linear(in_features, out_features, bias)
-        self.add_module(self.get_param_name(module_type, layer_type, name), layer, module_type)
+    def layer_norm(self, axis: int = -1, module_type: str = "layer_norm", layer_type: str = "layernorm", name: str | None = None, module_dict=None, layer_dict=None, eps: float = 1e-4):
+       if module_dict is None:
+           module_dict = self.register_module(module_type)
+       layer_dict = self.register_layer(layer_type, module_dict, name)
+       layer = LayerNorm(axis, module_dict, layer_dict, eps=eps)
+       return layer
+
+    def linear(self, in_features, out_features, bias=True, module_type="linear", layer_type="linear", name=None, module_dict=None):
+        if module_dict is None:
+            module_dict = self.register_module(module_type)
+        layer_dict = self.register_layer(layer_type, module_dict, name)
+        layer = Linear(in_features, out_features, module_dict, layer_dict, bias, name)
         return layer
         
-    def transformer(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_type="transformer", layer_type="transformer", name=None):
+    def transformer(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_type="transformer"):
         from src.models.transformer import Transformer
-        layer = Transformer(d_model, n_heads, pad_idx, mlp_ratio)
-        self.add_module(self.get_param_name(module_type, layer_type, name, is_layer=False), layer, module_type)
+        module_dict = self.register_module(module_type)
+        # layer_dict = self.register_layer(layer_type, module_dict, name)
+        layer = Transformer(d_model, n_heads, pad_idx, mlp_ratio, module_dict)
         return layer
     
-    def embedding(self, vocab_size, d_model, max_seq_len, pad_idx=0, module_type="embedding", layer_type="embedding", name=None):
+    def embedding(self, vocab_size, d_model, max_seq_len, pad_idx=0, module_type="embedding", layer_type="embedding", name="embedding"):
         from src.models.transformer import Embedding
-        layer = Embedding(vocab_size, d_model, max_seq_len, pad_idx)
-        self.add_module(self.get_param_name(module_type, layer_type, name, is_layer=False), layer, module_type)
+        module_dict = self.register_module(module_type)
+        layer_dict = self.register_layer(layer_type, module_dict, name)
+        layer = Embedding(vocab_size, d_model, max_seq_len, pad_idx, module_dict, layer_dict)
         return layer
 
     def dropout(self, x: Tensor, p=0.1):
@@ -135,21 +153,23 @@ class Module:
 
 
 class LayerNorm(Module):
-    def __init__(self, axis, eps=1e-4):
+    def __init__(self, axis, module_dict, layer_dict, eps=1e-4):
         super().__init__()
         self.eps = eps
         self.axis = axis
         self.gamma = None
         self.beta = None
         self.initialized = False
+        self.module_dict = module_dict
+        self.layer_dict = layer_dict
 
     def forward(self, x: Tensor, axis=-1):
         if not self.initialized:
             dim = x.shape[self.axis]
             self.gamma = Tensor(xp.ones(dim), requires_grad=True, name='gamma')
             self.beta = Tensor(xp.zeros(dim), requires_grad=True, name='beta')
-            self.register_parameter(param=self.gamma, module_type="linear", layer_type="layer_norm", name="gamma")
-            self.register_parameter(param=self.beta, module_type="linear", layer_type="layer_norm", name="beta")
+            self.register_parameter(param=self.gamma, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name="gamma")
+            self.register_parameter(param=self.beta, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name="beta")
             self.initialized = True
             
         mean = x.mean(axis=axis, keepdims=True)
@@ -161,20 +181,21 @@ class LayerNorm(Module):
         return self.forward(x)
 
 class Linear(Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, module_dict, layer_dict=None, bias=True, name=None):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        
+        self.module_dict = module_dict
+        self.layer_dict = layer_dict
+        self.name = f"{name}_" if name is not None else ""
+
         # Initialize weights and register them as parameters
         self.weight = Tensor(xp.random.randn(in_features, out_features) * 0.01)
-        self.register_parameter(param=self.weight, module_type="linear", layer_type="linear", name="weight")
+        self.register_parameter(param=self.weight, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name=f"{self.name}weight")
         
         if bias:
             self.bias = Tensor(xp.random.randn(out_features) * 0.01)
-            self.register_parameter(param=self.bias, module_type="linear", layer_type="linear", name="bias")
-        # else:
-        #     self.register_parameter(param=None, module_type="linear", layer_type=None, name="bias")
+            self.register_parameter(param=self.bias, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name=f"{self.name}bias")
 
     @property
     def shape(self):

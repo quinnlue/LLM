@@ -8,8 +8,8 @@ class Optimizer:
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
         self._raw_params = params
         self.params = {}
-        for param in self._raw_params:
-            self.params[param.name] = {
+        for name, param in self._raw_params.items():
+            self.params[name] = {
                 "param": param,
             }
 
@@ -66,15 +66,15 @@ class Optimizer:
         # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
         os.makedirs(path, exist_ok=True)
         os.makedirs(f"{path}/model", exist_ok=True)
-        for i, param in enumerate(self.params.values()):
-            np.save(f"{path}/model/param_{i:02d}.npy", param['param'].data)
+        for name, param in self.params.items():
+            np.save(f"{path}/model/{name}.npy", param['param'].data)
 
         np.save(f"{path}/optim/t.npy", self.t)
 
     def _load_params(self, path):
         # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
-        for i, param in enumerate(self.params.values()):
-            param['param'].data = np.load(f"{path}/model/param_{i:02d}.npy")
+        for name, param in self.params.items():
+            param['param'].data = np.load(f"{path}/model/{name}.npy")
 
 class AdamW(Optimizer):
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-4):
@@ -84,8 +84,8 @@ class AdamW(Optimizer):
         self.beta_2 = beta_2
         self.eps = eps
 
-        for param in self._raw_params:
-            self.params[param.name] = {
+        for name, param in self._raw_params.items():
+            self.params[name] = {
                 "param": param,
                 'm_t': xp.zeros_like(param.data),
                 'v_t': xp.zeros_like(param.data),
@@ -98,18 +98,18 @@ class AdamW(Optimizer):
         os.makedirs(f"{path}/optim/v_t", exist_ok=True)
 
         self._save_params(path)
-        for i, param in enumerate(self.params.values()):
-            np.save(f"{path}/optim/m_t/m_t_{i:02d}.npy", param['m_t'])
-            np.save(f"{path}/optim/v_t/v_t_{i:02d}.npy", param['v_t'])
+        for name, param in self.params.items():
+            np.save(f"{path}/optim/m_t/{name}.npy", param['m_t'])
+            np.save(f"{path}/optim/v_t/{name}.npy", param['v_t'])
 
 
 
 
     def _load_state(self, path):
         self._load_params(path)
-        for i, param in enumerate(self.params.values()):
-            param['m_t'] = xp.array(np.load(f"{path}/optim/m_t/m_t_{i:02d}.npy"))
-            param['v_t'] = xp.array(np.load(f"{path}/optim/v_t/v_t_{i:02d}.npy"))
+        for name, param in self.params.items():
+            param['m_t'] = xp.array(np.load(f"{path}/optim/m_t/{name}.npy"))
+            param['v_t'] = xp.array(np.load(f"{path}/optim/v_t/{name}.npy"))
 
         self.t = int(np.load(f"{path}/optim/t.npy"))
 

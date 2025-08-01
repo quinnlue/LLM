@@ -94,5 +94,5 @@ if __name__ == "__main__":
     model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS)
 
 
-    model.train(epochs=10, dataloader=DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin"), optimizer=optimizer)
+    model.train(epochs=3, dataloader=DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin"), optimizer=optimizer)
 

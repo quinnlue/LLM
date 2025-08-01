@@ -17,6 +17,7 @@ class Tensor:
 
     def detach(self):
         return Tensor(self.data.copy(), requires_grad=False)
+    
     def mean(self, axis=None, keepdims=False):
         out = Tensor(xp.mean(self.data, axis=axis, keepdims=keepdims), requires_grad=self.requires_grad)
         if out.requires_grad:
@@ -191,6 +192,8 @@ class Tensor:
     def __repr__(self):
         return f"Tensor(data={self.data}, shape={self.data.shape}, dtype={self.data.dtype})"
     
+    def __str__(self):
+        return f"Tensor(shape={self.data.shape}, dtype={self.data.dtype})"
 
     def __mul__(self, other):
         if not isinstance(other, Tensor):
