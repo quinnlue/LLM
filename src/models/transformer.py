@@ -91,6 +91,7 @@ class Embedding(Module):
         self.register_parameter(param=self.pe, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="pe")
 
     def get_sentence_embedding(self, idx):
+        idx = idx.data.astype(xp.int32)
         B, T = idx.shape
         padding_mask = xp.where(idx == self.pad_idx, -65504, 0).astype(xp.float16)
         padding_mask = padding_mask.reshape(B, 1, 1, T)

@@ -28,7 +28,7 @@ CHECKPOINT_DIR = r"checkpoints"
 # MODEL HYPERPARAMETERS ------------------------------
 
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 1024
+D_MODEL = 768
 N_HEADS = D_MODEL // 64
 MAX_SEQ_LEN = 2112 # CLIP TO 2048 DURING INFERENCE
 PAD_IDX = 0
