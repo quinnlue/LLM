@@ -25,22 +25,27 @@ class Transformer(Module):
 
     
     def attend(self, x: Tensor, padding_mask: xp.ndarray):
+        
         q = self.q(x)
         k = self.k(x)
         v = self.v(x)
+        
 
         q  = q.reshape((q.shape[0], q.shape[1], self.n_heads, self.d_head))
         k  = k.reshape((k.shape[0], k.shape[1], self.n_heads, self.d_head))
         v  = v.reshape((v.shape[0], v.shape[1], self.n_heads, self.d_head))
+        
 
         q = q.transpose((0, 2 , 1 ,3))
         k = k.transpose((0, 2 , 1 ,3))
         v = v.transpose((0, 2 , 1 ,3))
+        
 
-        atten_scores = q @ k.transpose((0, 1, 3, 2)) / (self.d_head ** 0.5)
+        atten_scores = q @ k.transpose((0, 1, 3, 2)) * (1 / (self.d_head ** 0.5))
+        
 
         # edit attention scores data directly to avoid accumulating gradients
-        casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -65504, k=1).astype(xp.float16)
+        casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -xp.inf, k=1).astype(xp.float16)
         atten_scores.data += casual_mask
 
         if padding_mask is not None:
@@ -48,29 +53,39 @@ class Transformer(Module):
             atten_scores.data += padding_mask
 
         atten_probs = self.softmax(atten_scores, axis=3)
+        
 
         output = atten_probs @ v
+        
 
         output = output.transpose((0, 2, 1, 3))
+        
 
         output = output.reshape((output.shape[0], output.shape[1], -1))
-
+        
         output = self.o(output)
+        
 
         return output
     
     def forward(self, x: Tensor, padding_mask: xp.ndarray):
+        
+        residual = x
         x = self.ln1(x)
-        atten_out =  self.attend(x, padding_mask)
+        atten_out = self.attend(x, padding_mask)
+        x = residual + atten_out
+        
 
-        x += atten_out
+        residual = x
         x = self.ln2(x)
-
         x_mlp = self.proj_up(x)
+        
         x_mlp = self.gelu(x_mlp)
+        
         x_mlp = self.proj_down(x_mlp)
-
-        x += x_mlp
+        
+        x = residual + x_mlp
+        
 
         return x
     
@@ -89,12 +104,13 @@ class Embedding(Module):
 
         self.register_parameter(param=self.W, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="embed")
         self.register_parameter(param=self.pe, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="pe")
-
+    
     def get_sentence_embedding(self, idx):
         idx = idx.data.astype(xp.int32)
         B, T = idx.shape
         padding_mask = xp.where(idx == self.pad_idx, -65504, 0).astype(xp.float16)
         padding_mask = padding_mask.reshape(B, 1, 1, T)
+        
         embed_vectors = self.W[idx]
         pe_slice = self.pe[:T][None, :, :]
         output = embed_vectors + pe_slice

@@ -30,39 +30,32 @@ CHECKPOINT_DIR = r"checkpoints"
 VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 768
 N_HEADS = D_MODEL // 64
-MAX_SEQ_LEN = 2112 # CLIP TO 2048 DURING INFERENCE
+MAX_SEQ_LEN = 536 # CLIP TO 512 DURING INFERENCE
 PAD_IDX = 0
 EOS_IDX = 1
-EXPECTED_STEPS = 86400
+DEPTH = 12
+EXPECTED_OPTIM_STEPS = 16000
+MINI_BATCH_PER_STEP = 24
+MAX_TOKENS_PER_MINI_BATCH = 48000
+
 
 
 class Model(Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads, checkpoint_interval_seconds: int = 3600):
+    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads, depth,checkpoint_interval_seconds: int = 3600):
         super().__init__()
         self.checkpoint_interval_seconds = checkpoint_interval_seconds
         self.best_val_loss = float("inf")
         self.e = self.embedding(vocab_size, d_model, max_seq_len, pad_idx)
+        self.depth = depth
+        self.heads = [self.transformer(d_model=d_model, n_heads=n_heads) for _ in range(depth)]
 
-        self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
+
         self.project = self.linear(d_model, vocab_size, module_type="linear", layer_type="linear", name="project")
     
     def forward(self, idx):
         x, padding_mask = self.e.get_sentence_embedding(idx)
-        x = self.head1(x, padding_mask)
-        x = self.head2(x, padding_mask)
-        x = self.head3(x, padding_mask)
-        x = self.head4(x, padding_mask)
-        x = self.head5(x, padding_mask)
-        x = self.head6(x, padding_mask)
-        x = self.head7(x, padding_mask)
-        x = self.head8(x, padding_mask)
+        for head in self.heads:
+            x = head(x, padding_mask)
         x = self.project(x)
         return x
     
@@ -82,7 +75,7 @@ class Model(Module):
         cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.save_checkpoint(optimizer, cp_path)
         
-    def train(self, epochs: int, dataloader: DataLoader, optimizer):
+    def train(self, epochs: int, dataloader: DataLoader, optimizer, mini_batch_per_step):
         last_cp_time = time.perf_counter()
 
         for i in range(epochs):
@@ -90,8 +83,9 @@ class Model(Module):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropy(y_hat, batch[:,1:])
                 loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+                if i % mini_batch_per_step == 0:
+                    optimizer.step()
+                    optimizer.zero_grad()
                 train_logger.info(f"Training loss: {loss.item()}")
 
                 # checkpointing & validation
@@ -102,14 +96,15 @@ class Model(Module):
 if __name__ == "__main__":
     scheduler = LRScheduler(
         warmup_steps=1000,
-        total_steps=EXPECTED_STEPS,
+        total_steps=EXPECTED_OPTIM_STEPS,
         min_lr=1e-5,
         max_lr=3e-4,
         final_lr=1e-6,
+        batch_per_step=MINI_BATCH_PER_STEP
     )
-    model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS)
+    model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS, DEPTH)
     optimizer = AdamW(model.parameters(), lr_scheduler=scheduler)
 
-    dl = DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin", max_tokens=1024)
-    model.train(epochs=3, dataloader=dl, optimizer=optimizer)
+    dl = DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
+    model.train(epochs=5, dataloader=dl, optimizer=optimizer, mini_batch_per_step=MINI_BATCH_PER_STEP)
 

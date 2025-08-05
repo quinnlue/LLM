@@ -43,7 +43,7 @@ class Module:
     
     @property
     def num_parameters(self):
-        return sum(p.n_params for p in self.parameters())
+        return sum(p.n_params for p in self.parameters().values())
 
     def _build(self, input_shape: tuple):
         dummy_input = Tensor(xp.zeros(input_shape), requires_grad=False)
@@ -106,17 +106,16 @@ class Module:
        layer = LayerNorm(axis, module_dict, layer_dict, eps=eps)
        return layer
 
-    def linear(self, in_features, out_features, bias=True, module_type="linear", layer_type="linear", name=None, module_dict=None):
+    def linear(self, in_features, out_features, use_bias=True, module_type="linear", layer_type="linear", name=None, module_dict=None):
         if module_dict is None:
             module_dict = self.register_module(module_type)
         layer_dict = self.register_layer(layer_type, module_dict, name)
-        layer = Linear(in_features, out_features, module_dict, layer_dict, bias, name)
+        layer = Linear(in_features, out_features, module_dict, layer_dict, use_bias, name)
         return layer
         
     def transformer(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_type="transformer"):
         from src.models.transformer import Transformer
         module_dict = self.register_module(module_type)
-        # layer_dict = self.register_layer(layer_type, module_dict, name)
         layer = Transformer(d_model, n_heads, pad_idx, mlp_ratio, module_dict)
         return layer
     
@@ -127,6 +126,12 @@ class Module:
         layer = Embedding(vocab_size, d_model, max_seq_len, pad_idx, module_dict, layer_dict)
         return layer
 
+    def xavier_uniform(self, shape):
+        fan_in, fan_out = shape[-1], shape[-2] if len(shape) > 1 else (shape[0], shape[0])
+        limit = xp.sqrt(6 / (fan_in + fan_out))
+        return xp.random.uniform(-limit, limit, size=shape)
+    
+    # WRAPPER FUNCTIONS -----------------------------------------------
     def dropout(self, x: Tensor, p=0.1):
         return x._dropout(p, train=self.is_training)
     
@@ -147,7 +152,7 @@ class Module:
         return x._softmax(axis=axis)
 
     def zero_grad(self):
-        for param in self.parameters():
+        for param in self.parameters().values():
             if param.grad is not None:
                 param.grad = None
 
@@ -181,20 +186,22 @@ class LayerNorm(Module):
         return self.forward(x)
 
 class Linear(Module):
-    def __init__(self, in_features, out_features, module_dict, layer_dict=None, bias=True, name=None):
+    def __init__(self, in_features, out_features, module_dict, layer_dict=None, use_bias=True, name=None):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.module_dict = module_dict
         self.layer_dict = layer_dict
+        self.use_bias = use_bias
         self.name = f"{name}_" if name is not None else ""
 
         # Initialize weights and register them as parameters
-        self.weight = Tensor(xp.random.randn(in_features, out_features) * 0.01)
+        self.weight = Tensor(self.xavier_uniform((in_features, out_features)), requires_grad=True)
+
         self.register_parameter(param=self.weight, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name=f"{self.name}weight")
         
-        if bias:
-            self.bias = Tensor(xp.random.randn(out_features) * 0.01)
+        if self.use_bias:
+            self.bias = Tensor(xp.zeros(out_features), requires_grad=True)
             self.register_parameter(param=self.bias, module_dict=self.module_dict, layer_type=self.layer_dict["type"], layer_dict=self.layer_dict, name=f"{self.name}bias")
 
     @property
@@ -203,8 +210,8 @@ class Linear(Module):
 
     def forward(self, x):
         out = x @ self.weight
-        if self.bias is not None:
-            out += self.bias
+        if self.use_bias:
+            out = out + self.bias
         return out
     
     def __call__(self, x):

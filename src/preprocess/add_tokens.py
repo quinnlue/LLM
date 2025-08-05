@@ -16,10 +16,7 @@ tokenizer = None
 def init_worker():
     global tokenizer
     tokenizer = Tokenizer.from_file("src/tokenizer/tokenizer.json")
-    # tokenizer = Tokenizer(
-    #     token_to_id_path=os.path.join(PROJECT_ROOT, "src/tokenizer/token_to_id.json"), 
-    #     merges_path=os.path.join(PROJECT_ROOT, "src/tokenizer/merges.json")
-    # )
+
 
 def tokenize(text):
     global tokenizer

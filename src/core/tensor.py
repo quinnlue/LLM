@@ -2,7 +2,7 @@ from src.utils.backend import xp
 
 class Tensor:
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-4):
-        self.data = xp.array(data).astype(xp.float16)
+        self.data = xp.array(data).astype(xp.float64)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
@@ -23,8 +23,18 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
-                grad_self = grad.data * xp.ones_like(self.data) / self.data.shape[axis if axis is not None else 0]
-                return (Tensor(grad_self),)
+                if axis is None:
+                    denom = self.data.size
+                    grad_self = grad.data * xp.ones_like(self.data) / denom
+                else:
+                    if isinstance(axis, tuple):
+                        denom = 1
+                        for ax in axis:
+                            denom *= self.data.shape[ax]
+                    else:
+                        denom = self.data.shape[axis]
+                    grad_self = grad.data * xp.ones_like(self.data) / denom
+                return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
         return out
     
@@ -116,9 +126,15 @@ class Tensor:
         return self + other
     
     def __iadd__(self, other):
+        raise NotImplementedError("Not implemented")
         self.data += other.data if isinstance(other, Tensor) else other
         return self
     
+    def astype(self, dtype):
+        # Edits type in place
+        self.data = self.data.astype(dtype)
+        return self
+
     def transpose(self, axes):
         out = Tensor(xp.transpose(self.data, axes), requires_grad=self.requires_grad)
         if out.requires_grad:
@@ -147,11 +163,26 @@ class Tensor:
                 other_T = xp.swapaxes(other.data, -1, -2)
                 self_T  = xp.swapaxes(self.data,  -1, -2)
 
-                grad_self  = xp.matmul(grad.data, other_T)
-                grad_other = xp.matmul(self_T,  grad.data)
+                # For grad_self: grad @ other_T
+                grad_self = xp.matmul(grad.data, other_T)
+                
+                # For grad_other: self_T @ grad
+                # Need to handle broadcasting by summing over batch dimensions
+                if self.data.ndim > 2 and other.data.ndim == 2:
+                    # Case: (batch, ..., in) @ (in, out) -> (batch, ..., out)
+                    # grad_other should be (in, out), so sum over batch dimensions
+                    grad_other = xp.matmul(self_T, grad.data)
+                    # Sum over all dimensions except the last two
+                    sum_axes = tuple(range(grad_other.ndim - 2))
+                    if sum_axes:
+                        grad_other = xp.sum(grad_other, axis=sum_axes)
+                else:
+                    grad_other = xp.matmul(self_T, grad.data)
+                    
                 return (Tensor(grad_self, requires_grad=False), Tensor(grad_other, requires_grad=False))
             out.grad_fn = grad_fn
         return out
+    
     def __rmatmul__(self, other):
         if not isinstance(other, Tensor):
             other = Tensor(other, requires_grad=False)
@@ -170,6 +201,7 @@ class Tensor:
         return out
     
     def __isub__(self, other):
+        raise NotImplementedError("Not implemented")
         self.data -= other.data if isinstance(other, Tensor) else other
         return self
     
@@ -184,9 +216,7 @@ class Tensor:
         return out
     
     def __rsub__(self, other):
-        if not isinstance(other, Tensor):
-            other = Tensor(other, requires_grad=False)
-        return other - self
+        return -self + other
 
     
     def __repr__(self):
@@ -353,8 +383,7 @@ class Tensor:
         if self not in _visited:
             _visited[self] = grad
         else:
-            _visited[self] += grad
-            return
+            _visited[self] = _visited[self] + grad
 
         # store the total gradient
         self.grad = _visited[self]
