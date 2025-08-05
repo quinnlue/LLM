@@ -34,7 +34,7 @@ MAX_SEQ_LEN = 536 # CLIP TO 512 DURING INFERENCE
 PAD_IDX = 0
 EOS_IDX = 1
 DEPTH = 12
-EXPECTED_OPTIM_STEPS = 16000
+EXPECTED_OPTIM_STEPS = 20000
 MINI_BATCH_PER_STEP = 24
 MAX_TOKENS_PER_MINI_BATCH = 48000
 
@@ -78,8 +78,8 @@ class Model(Module):
     def train(self, epochs: int, dataloader: DataLoader, optimizer, mini_batch_per_step):
         last_cp_time = time.perf_counter()
 
-        for i in range(epochs):
-            for batch in tqdm(dataloader, desc=f"Training epoch {i}"):
+        for epoch in range(epochs):
+            for i, batch in enumerate(tqdm(dataloader, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropy(y_hat, batch[:,1:])
                 loss.backward()
@@ -95,7 +95,7 @@ class Model(Module):
 
 if __name__ == "__main__":
     scheduler = LRScheduler(
-        warmup_steps=1000,
+        warmup_steps=EXPECTED_OPTIM_STEPS // 100 * 3,
         total_steps=EXPECTED_OPTIM_STEPS,
         min_lr=1e-5,
         max_lr=3e-4,
@@ -106,5 +106,7 @@ if __name__ == "__main__":
     optimizer = AdamW(model.parameters(), lr_scheduler=scheduler)
 
     dl = DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
-    model.train(epochs=5, dataloader=dl, optimizer=optimizer, mini_batch_per_step=MINI_BATCH_PER_STEP)
+
+    # data set is about 7b tokens
+    model.train(epochs=2, dataloader=dl, optimizer=optimizer, mini_batch_per_step=MINI_BATCH_PER_STEP)
 
