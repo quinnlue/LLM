@@ -24,13 +24,14 @@ VAL_DIR = "data/val"
 CHECKPOINT_DIR = "checkpoints"
 
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 1024
+D_MODEL = 768
 N_HEADS = D_MODEL // 64
-MAX_SEQ_LEN = 2112
+MAX_SEQ_LEN = 548
 PAD_IDX = 0
 EOS_IDX = 1
 WARMUP_STEPS = 1600
 TOTAL_STEPS = 86400
+DEPTH = 12
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -80,59 +81,13 @@ class VanillaAttentionLayer(nn.Module):
         return x
 
 
-# class FlashAttentionTransformerLayer(nn.Module):
-#     def __init__(self, d_model, n_heads):
-#         super().__init__()
-#         self.n_heads = n_heads
-#         self.d_head = d_model // n_heads
-#         self.qkv_proj = nn.Linear(d_model, 3 * d_model, bias=False)
-#         self.flash_attn = FlashAttention(causal=True)
-#         self.out_proj = nn.Linear(d_model, d_model)
-#         self.layer_norm1 = nn.LayerNorm(d_model)
-#         self.mlp = nn.Sequential(
-#             nn.Linear(d_model, 4 * d_model),
-#             nn.GELU(),
-#             nn.Linear(4 * d_model, d_model),
-#         )
-#         self.layer_norm2 = nn.LayerNorm(d_model)
-
-#     def forward(self, x, padding_mask=None):
-#         # x: (B, S, D)
-#         residual = x
-#         x = self.layer_norm1(x)
-
-#         B, S, D = x.shape
-#         qkv = self.qkv_proj(x)  # (B, S, 3*D)
-#         qkv = qkv.reshape(B, S, 3, self.n_heads, self.d_head)
-#         qkv = qkv.permute(2, 0, 3, 1, 4)  # (3, B, n_heads, S, d_head)
-#         q, k, v = qkv[0], qkv[1], qkv[2]  # each (B, n_heads, S, d_head)
-
-#         # flash_attn expects q,k,v: (B * n_heads, S, d_head)
-#         q = q.reshape(B * self.n_heads, S, self.d_head)
-#         k = k.reshape(B * self.n_heads, S, self.d_head)
-#         v = v.reshape(B * self.n_heads, S, self.d_head)
-
-#         attn_output = self.flash_attn(q, k, v)  # (B*n_heads, S, d_head)
-#         attn_output = attn_output.reshape(B, self.n_heads, S, self.d_head)
-#         attn_output = attn_output.permute(0, 2, 1, 3).reshape(B, S, D)  # (B, S, D)
-
-#         x = residual + self.out_proj(attn_output)
-
-#         # Feed forward
-#         residual = x
-#         x = self.layer_norm2(x)
-#         x = residual + self.mlp(x)
-
-#         return x
-
-
 class Model(nn.Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads, n_layers=8):
+    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads):
         super().__init__()
         self.pad_idx = pad_idx
         self.embed = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
         self.pos_enc = PositionalEncoding(d_model, max_seq_len)
-        self.layers = nn.ModuleList([VanillaAttentionLayer(d_model, n_heads) for _ in range(n_layers)])
+        self.layers = nn.ModuleList([VanillaAttentionLayer(d_model, n_heads) for _ in range(DEPTH)])
         self.project = nn.Linear(d_model, vocab_size)
 
     def forward(self, idx):
