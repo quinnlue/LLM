@@ -31,15 +31,9 @@ def process_file(path: str):
     df = pd.read_parquet(path)
 
     # vectorised length & bin calculation – no Python loop
-    lens_no_eos = df.seq.str.len()
-    df          = df[lens_no_eos <= 528]
-
-    # +1 to account for the EOS token we will append later
-    seq_lens_with_eos = lens_no_eos.add(1)
-
-    df["bin"] = (
-        seq_lens_with_eos.add(TOKS_PER_BIN - 1) // TOKS_PER_BIN
-    ).astype(np.int16)
+    lens      = df.seq.str.len()
+    df        = df[lens <= 528]
+    df["bin"] = (lens.add(TOKS_PER_BIN - 1) // TOKS_PER_BIN).astype(np.int16)
 
     rows = list(zip(df.seq, df["bin"]))
 
@@ -63,4 +57,4 @@ if __name__ == "__main__":                     # REQUIRED on Windows
         if f.endswith(".parquet")
     ]
     for fp in parquet_files:
-        process_file(fp)
+        process_file(fp) 
