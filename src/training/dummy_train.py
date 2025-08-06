@@ -73,18 +73,24 @@ def create_dummy_data(seq_len, batch_size):
     y = Tensor(x.copy())
     return x, y
 
+EXPECTED_OPTIM_STEPS = 10000
+MINI_BATCH_PER_STEP = 1
+
+
 
 model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
-BATCH_SIZE = 8
+BATCH_SIZE = 1
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 scheduler = LRScheduler(
-    warmup_steps=1000,
-    total_steps=10000,
+    warmup_steps=EXPECTED_OPTIM_STEPS // 100 * 3,
+    total_steps=EXPECTED_OPTIM_STEPS,
     min_lr=1e-5,
     max_lr=3e-4,
     final_lr=1e-6,
+    batch_per_step=MINI_BATCH_PER_STEP
 )
 
 optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32))
+print('asdfasdf')
 model.train(x, y, epochs=100, optimizer=optimizer)
