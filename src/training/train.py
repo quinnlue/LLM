@@ -60,7 +60,7 @@ class Model(Module):
         return x
     
     def evaluate(self):
-        dl = DataLoader(VAL_DIR, x_column="x", is_binned=True, bin_column="bin")
+        dl = DataLoader(VAL_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
         losses = []
         for batch in tqdm(dl, desc="Evaluating"):
             batch.requires_grad = False
@@ -103,9 +103,9 @@ if __name__ == "__main__":
         batch_per_step=MINI_BATCH_PER_STEP
     )
     model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS, DEPTH)
-    optimizer = AdamW(model.parameters(), lr_scheduler=scheduler)
+    optimizer = AdamW(model.parameters(), lr=scheduler)
 
-    dl = DataLoader(TRAIN_DIR, x_column="x", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
+    dl = DataLoader(TRAIN_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
 
     # data set is about 7b tokens
     model.train(epochs=2, dataloader=dl, optimizer=optimizer, mini_batch_per_step=MINI_BATCH_PER_STEP)
