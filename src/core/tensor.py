@@ -114,8 +114,8 @@ class Tensor:
                 return grad_arr.reshape(target_shape)
 
             def grad_fn(grad):
-                grad_self  = _reduce_broadcast(grad.data, self.data.shape)
-                grad_other = _reduce_broadcast(grad.data, other.data.shape)
+                grad_self  = _reduce_broadcast(grad, self.data.shape)
+                grad_other = _reduce_broadcast(grad, other.shape)
                 return (grad_self, grad_other)
 
             out.grad_fn = grad_fn
