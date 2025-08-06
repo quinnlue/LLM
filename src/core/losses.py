@@ -16,7 +16,7 @@ def BCE(logits: Tensor, y: Tensor):
         out.parents = (logits,)
         def grad_fn(grad):
             sigmoid = 1.0 / (1.0 + xp.exp(-logits.data))
-            grad_logits  = (sigmoid - y.data) * grad.data / logits.data.size
+            grad_logits  = (sigmoid - y.data) * grad / logits.data.size
             return (grad_logits,)
         out.grad_fn = grad_fn
     return out

@@ -56,7 +56,7 @@ class Optimizer:
         self.lr_scheduler = lr_scheduler
 
     def reduce_like(self, grad: Tensor, target_shape: tuple) -> Tensor:
-        gshape = grad.data.shape
+        gshape = grad.shape
         tshape = target_shape
 
         if gshape == tshape:
@@ -76,9 +76,9 @@ class Optimizer:
                     raise ValueError(f"Cannot broadcast grad shape {gshape} to target {target_shape}")
 
         for axis in reversed(axes_to_sum):
-            grad = Tensor(grad.data.sum(axis=axis, keepdims=True))
+            grad = grad.sum(axis=axis, keepdims=True)
 
-        grad = Tensor(grad.data.reshape(target_shape))
+        grad = grad.reshape(target_shape)
         return grad
 
     def zero_grad(self):
@@ -174,7 +174,7 @@ class AdamW(Optimizer):
             if v_t.shape != master_param_tensor.data.shape:
                 v_t = self.reduce_like(v_t, master_param_tensor.data.shape)
 
-            grad_data = grad.data.astype(dtype)
+            grad_data = grad.astype(dtype)
             del grad
 
             # Add numerical stability checks for mixed precision
@@ -229,7 +229,7 @@ class Standard(Optimizer):
         for param in self.params.values():
             if param['param'].grad is None:
                 continue
-            g = param['param'].grad.data
+            g = param['param'].grad
             total_norm += (g ** 2).sum()
         total_norm = xp.sqrt(total_norm)
 
@@ -244,8 +244,8 @@ class Standard(Optimizer):
             if grad is None:
                 continue
             # Broadcast-reduce if shapes mismatch (should rarely happen here)
-            if grad.data.shape != p_tensor.data.shape:
+            if grad.shape != p_tensor.data.shape:
                 grad = self.reduce_like(grad, p_tensor.data.shape)
-            grad_data = grad.data * clip_coef
+            grad_data = grad * clip_coef
             p_tensor.data -= lr_t * grad_data
 
