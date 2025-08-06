@@ -103,7 +103,7 @@ if __name__ == "__main__":
         batch_per_step=MINI_BATCH_PER_STEP
     )
     model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS, DEPTH)
-    optimizer = AdamW(model.parameters(), lr=scheduler)
+    optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32))
 
     dl = DataLoader(TRAIN_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
 
