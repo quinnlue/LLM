@@ -2,7 +2,6 @@ import pandas as pd
 import sys
 import os 
 from tqdm import tqdm
-import tracemalloc
 import gc
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -12,12 +11,13 @@ from src.utils.backend import xp
 from src.core.module import Module
 from src.core.losses import CrossEntropy
 from src.core.optim import AdamW
+from torch.optim.lr_scheduler import LRScheduler
 
 
-D_MODEL = 16
-N_HEADS = D_MODEL // 4
-VOCAB_SIZE = 16
-MAX_SEQ_LEN = 16
+D_MODEL = 768
+N_HEADS = D_MODEL // 64
+VOCAB_SIZE = 21680
+MAX_SEQ_LEN = 548
 PAD_IDX = 0
 EOS_IDX = 1
 
@@ -49,56 +49,22 @@ class Test(Module):
         x = self.project(x)
         return x
     
-    def _log_gpu_mem(self, tag: str):
-        if hasattr(xp, "get_default_memory_pool"):
-            used = xp.get_default_memory_pool().used_bytes() / 1024**2
-            print(f"    [GPU] {tag:<18}: {used:8.2f} MB")
-
-    def train(self, x, y, epochs, lr):
-
+    def train(self, x, y, epochs, optimizer):
         for epoch in tqdm(range(epochs)):
-            print(f"\n=== Epoch {epoch} ===")
-
-            # ---- set up memory tracking --------------------------------
-            tracemalloc.start()
-            if hasattr(xp, "get_default_memory_pool"):
-                xp.get_default_memory_pool().free_all_blocks()
-
-            self._log_gpu_mem("start")
-
-            # ---- forward ----------------------------------------------
             y_hat = self.forward(x)
-            self._log_gpu_mem("after forward")
 
-            # ---- loss --------------------------------------------------
             loss = CrossEntropy(y_hat, y, axis=-1)
-            self._log_gpu_mem("after loss")
 
-            # ---- backward ---------------------------------------------
             loss.backward()
-            self._log_gpu_mem("after backward")
 
-            # # ---- optimiser --------------------------------------------
-            # optimizer.step()
-            # self._log_gpu_mem("after opt.step")
+            optimizer.step()
 
-            # optimizer.zero_grad()
+            optimizer.zero_grad()
 
-            # self._log_gpu_mem("after zero_grad")
 
-            # # ---- CPU mem & cleanup ------------------------------------
-            # current_cpu, peak_cpu = tracemalloc.get_traced_memory()
-            # tracemalloc.stop()
+            gc.collect()  # force Python GC
 
-            # gc.collect()  # force Python GC
-            # if hasattr(xp, "get_default_memory_pool"):
-            #     xp.get_default_memory_pool().free_all_blocks()
-            # self._log_gpu_mem("after gc")
-
-            # # ---- summary ----------------------------------------------
-            # print(f"    Loss                 : {loss.data}")
-            # print(f"    CPU  current / peak  : {current_cpu / 1024**2:.2f} MB | "
-            #       f"{peak_cpu / 1024**2:.2f} MB")
+            print(f"Loss: {loss.data}")
 
              
 
@@ -112,5 +78,13 @@ model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
 BATCH_SIZE = 8
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
+scheduler = LRScheduler(
+    warmup_steps=1000,
+    total_steps=10000,
+    min_lr=1e-5,
+    max_lr=3e-4,
+    final_lr=1e-6,
+)
 
-model.train(x, y, epochs=100, lr=0.001)
+optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32))
+model.train(x, y, epochs=100, optimizer=optimizer)
