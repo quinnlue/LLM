@@ -17,7 +17,7 @@ def BCE(logits: Tensor, y: Tensor):
         def grad_fn(grad):
             sigmoid = 1.0 / (1.0 + xp.exp(-logits.data))
             grad_logits  = (sigmoid - y.data) * grad.data / logits.data.size
-            return (Tensor(grad_logits, requires_grad=False),)
+            return (grad_logits,)
         out.grad_fn = grad_fn
     return out
 
@@ -63,8 +63,8 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
             grad_input[idx] -= 1.0
             
             factor = 1 / (logits.data.shape[0] * logits.data.shape[1])
-            grad_out = grad_input * factor * grad.data
-            return (Tensor(grad_out, requires_grad=False),)
+            grad_out = grad_input * factor * grad
+            return (grad_out,)
         out.grad_fn = grad_fn
 
     return out
