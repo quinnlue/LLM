@@ -86,6 +86,6 @@ BATCH_SIZE = 20000//MAX_SEQ_LEN
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 
 
-optimizer = AdamW(model.parameters(), lr=0.0001, precision=(xp.float16, xp.float32))
+optimizer = AdamW(model.parameters(), lr=0.0001, precision=(xp.float16, xp.float16))
 print('asdfasdf')
 model.train(x, y, epochs=100, optimizer=optimizer)
