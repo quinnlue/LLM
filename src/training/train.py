@@ -81,9 +81,9 @@ class Model(Module):
         for epoch in range(epochs):
             for i, batch in enumerate(tqdm(dataloader, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
-                loss = CrossEntropy(y_hat, batch[:,1:])
+                loss = CrossEntropy(y_hat, batch[:,1:])/mini_batch_per_step
                 loss.backward()
-                if i % mini_batch_per_step == 0:
+                if (i + 1) % mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
                 train_logger.info(f"Training loss: {loss.data}")
@@ -99,9 +99,9 @@ if __name__ == "__main__":
         total_steps=EXPECTED_OPTIM_STEPS,
         min_lr=1e-5,
         max_lr=3e-4,
-        final_lr=1e-6,
-        batch_per_step=MINI_BATCH_PER_STEP
-    )
+        final_lr=1e-6
+        )
+    
     model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS, DEPTH)
     optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32))
 
