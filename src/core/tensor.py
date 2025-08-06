@@ -34,7 +34,7 @@ class Tensor:
                     else:
                         denom = self.data.shape[axis]
                     grad_self = grad.data * xp.ones_like(self.data) / denom
-                return (Tensor(grad_self, requires_grad=False),)
+                return (grad_self,)
             out.grad_fn = grad_fn
         return out
     
@@ -116,8 +116,7 @@ class Tensor:
             def grad_fn(grad):
                 grad_self  = _reduce_broadcast(grad.data, self.data.shape)
                 grad_other = _reduce_broadcast(grad.data, other.data.shape)
-                return (Tensor(grad_self,  requires_grad=False),
-                        Tensor(grad_other, requires_grad=False))
+                return (grad_self, grad_other)
 
             out.grad_fn = grad_fn
         return out
@@ -211,7 +210,7 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad_self = grad.data * other * xp.power(self.data, other - 1)
-                return (Tensor(grad_self, requires_grad=False),)
+                return (grad_self,)
             out.grad_fn = grad_fn
         return out
     
@@ -285,7 +284,7 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 safe_self = xp.maximum(self.data, self.eps)
-                return (grad / Tensor(safe_self, requires_grad=False),)
+                return (grad / safe_self,)
             out.grad_fn = grad_fn
         return out
 
@@ -296,7 +295,7 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad_self = grad.data * sigmoid_data * (1 - sigmoid_data)
-                return (Tensor(grad_self, requires_grad=False),)
+                return (grad_self,)
             out.grad_fn = grad_fn
         return out
     
@@ -334,7 +333,7 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad_self = grad.data * (self.data > 0)
-                return (Tensor(grad_self, requires_grad=False),)
+                return (grad_self,)
             out.grad_fn = grad_fn
         return out
     
@@ -346,7 +345,7 @@ class Tensor:
             def grad_fn(grad):
                 u = xp.sqrt(2 / xp.pi) * (self.data + 0.044715 * xp.power(self.data, 3))
                 grad_self = grad.data * (0.5 * (1 + xp.tanh(u)) + self.data * (1 - xp.power(xp.tanh(u), 2)) * (xp.sqrt(2 / xp.pi) + 0.044715 * 3 * xp.power(self.data, 2)))
-                return (Tensor(grad_self, requires_grad=False),)
+                return (grad_self,)
             out.grad_fn = grad_fn
         return out
     

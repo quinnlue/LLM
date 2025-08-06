@@ -25,6 +25,8 @@ notebook>=7.0.0
 # Development and Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
+fastparquet>=2023.11.0
+pyarrow>=14.0.0
 
 # Optional: Flash Attention (commented out in torch_train.py)
 # flash-attn>=2.0.0 
