@@ -375,7 +375,7 @@ class Tensor:
             return
 
         if grad is None:
-            grad = Tensor(xp.ones_like(self.data), requires_grad=False)
+            grad = xp.ones_like(self.data)
 
         if _visited is None:
             _visited = {}
@@ -385,17 +385,15 @@ class Tensor:
         else:
             _visited[self] = _visited[self] + grad
 
-        # store the total gradient
-        self.grad = _visited[self]
+        if self.grad is None:
+            self.grad = _visited[self]
+        else:
+            self.grad += _visited[self]
 
-        # propagate once to each parent
         if self.grad_fn is not None:
-            # Save a local copy, then immediately sever the links so the
-            # graph from this Tensor backward is eligible for GC.
             parents_local = self.parents
-            grads         = self.grad_fn(self.grad)
+            grads = self.grad_fn(self.grad)
 
-            # *******  CRUCIAL: break reference cycles  *******
             self.grad_fn = None
             self.parents = ()
 

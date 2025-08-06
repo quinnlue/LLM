@@ -66,7 +66,7 @@ class Model(Module):
             batch.requires_grad = False
             y_hat = self.forward(batch[:,:-1])
             loss = CrossEntropy(y_hat, batch[:,1:])
-            losses.append(loss.item())
+            losses.append(loss.data)
         return xp.mean(xp.array(losses))
 
     def checkpoint(self, optimizer):
@@ -86,7 +86,7 @@ class Model(Module):
                 if i % mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
-                train_logger.info(f"Training loss: {loss.item()}")
+                train_logger.info(f"Training loss: {loss.data}")
 
                 # checkpointing & validation
                 if time.perf_counter() - last_cp_time > self.checkpoint_interval_seconds:
