@@ -69,8 +69,10 @@ class Test(Module):
              
 
 def create_dummy_data(seq_len, batch_size):
-    x = xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len)).astype(xp.int32)
-    y = Tensor(x.copy())
+    src = Tensor(xp.random.randint(0, VOCAB_SIZE, (batch_size, seq_len)).astype(xp.int32))
+    x = src[:,:-1]
+    y = src[:,1:]
+    
     return x, y
 
 EXPECTED_OPTIM_STEPS = 10000
