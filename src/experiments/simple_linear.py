@@ -17,6 +17,7 @@ class Net(Module):
     def __init__(self):
         super().__init__()
         self.fc1 = self.linear(7, 10, name="fc1")
+
         self.fc2 = self.linear(10,1, name="fc2")
         self.ln = self.layer_norm(axis=-1)
 
@@ -26,7 +27,6 @@ class Net(Module):
         x = self.dropout(x, p=0.1)
         x = self.ln(x)
         x = self.fc2(x)
-        x = self.sigmoid(x)
         return x
     
     def train(self, x: Tensor, y: Tensor, optimizer, num_epochs=10000):

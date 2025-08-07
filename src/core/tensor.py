@@ -232,7 +232,7 @@ class Tensor:
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
-                return (grad * other, grad * self)
+                return (grad * other.data, grad * self.data)
             out.grad_fn = grad_fn
         return out
     
