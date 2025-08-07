@@ -178,9 +178,9 @@ class AdamW(Optimizer):
             del grad
 
             # # Add numerical stability checks for mixed precision
-            # if xp.isnan(grad_data).any() or xp.isinf(grad_data).any():
-            #     print(f"Warning: NaN/Inf detected in gradients, skipping update")
-            #     continue
+            if xp.isnan(grad_data).any() or xp.isinf(grad_data).any():
+                print(f"Warning: NaN/Inf detected in gradients, skipping update")
+                continue
 
             # Use a larger epsilon for float16 to prevent numerical issues
             effective_eps = max(self.eps, 1e-7) if self.master_dtype == xp.float16 else self.eps
