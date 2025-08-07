@@ -155,36 +155,31 @@ class Tensor:
         return out
     
     def __matmul__(self, other):
+        if not isinstance(other, Tensor):
+            other = Tensor(other, requires_grad=False)
+
         out = Tensor(xp.matmul(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad)
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
-                # Ensure grad is a proper array, not a memory pointer
-                if hasattr(grad, 'dtype'):
-                    grad_array = grad
-                else:
-                    # If grad is a memory pointer, we need to convert it to an array
-                    # This assumes grad has the correct shape and dtype
-                    grad_array = xp.asarray(grad)
-                
                 other_T = xp.swapaxes(other.data, -1, -2)
                 self_T  = xp.swapaxes(self.data,  -1, -2)
 
                 # For grad_self: grad @ other_T
-                grad_self = xp.matmul(grad_array, other_T)
+                grad_self = xp.matmul(grad, other_T)
                 
                 # For grad_other: self_T @ grad
                 # Need to handle broadcasting by summing over batch dimensions
                 if self.data.ndim > 2 and other.data.ndim == 2:
                     # Case: (batch, ..., in) @ (in, out) -> (batch, ..., out)
                     # grad_other should be (in, out), so sum over batch dimensions
-                    grad_other = xp.matmul(self_T, grad_array)
+                    grad_other = xp.matmul(self_T, grad)
                     # Sum over all dimensions except the last two
                     sum_axes = tuple(range(grad_other.ndim - 2))
                     if sum_axes:
                         grad_other = xp.sum(grad_other, axis=sum_axes)
                 else:
-                    grad_other = xp.matmul(self_T, grad_array)
+                    grad_other = xp.matmul(self_T, grad)
                     
                 return (grad_self, grad_other)
             out.grad_fn = grad_fn
