@@ -11,6 +11,7 @@ import time
 from typing import List
 from src.tokenizer.tokenizer import Tokenizer
 import pandas as pd
+import numpy as np
 
 
 src = np.random.randint(low=1, high=16, size=(128, 16))
