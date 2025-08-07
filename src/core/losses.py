@@ -16,8 +16,8 @@ def BCE(logits: Tensor, y: Tensor):
         out.parents = (logits,)
         def grad_fn(grad):
             sigmoid = 1.0 / (1.0 + xp.exp(-logits.data))
-            grad_logits  = (sigmoid - y.data) * grad / logits.data.size
-            return (grad_logits,)
+            grad_logits  = (sigmoid - y.data) * grad.data / logits.data.size
+            return (Tensor(grad_logits, requires_grad=False),)
         out.grad_fn = grad_fn
     return out
 
@@ -43,9 +43,9 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
     seq_idx = xp.arange(S)[None, :]  
     tgt_idx = xp.array(y.data).astype(xp.int32)
 
-    if use_mask:
-        mask = y.data != pad_idx
-        tgt_idx = tgt_idx * mask
+    # if use_mask:
+    #     mask = y.data != pad_idx
+    #     tgt_idx = tgt_idx * mask
 
     idx = (batch_idx, seq_idx, tgt_idx)
     target_log_probs = log_softmax[idx]
@@ -63,8 +63,9 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
             grad_input[idx] -= 1.0
             
             factor = 1 / (logits.data.shape[0] * logits.data.shape[1])
-            grad_out = grad_input * factor * grad
-            return (grad_out,)
+            grad_out = grad_input * factor * grad.data
+            # BUG: must return a Tensor, not a raw array
+            return (Tensor(grad_out, requires_grad=False),)
         out.grad_fn = grad_fn
 
     return out

@@ -14,10 +14,10 @@ from src.core.optim import AdamW
 from torch.optim.lr_scheduler import LRScheduler
 
 
-D_MODEL = 768
-N_HEADS = D_MODEL // 64
-VOCAB_SIZE = 21680
-MAX_SEQ_LEN = 548
+D_MODEL = 16
+N_HEADS = D_MODEL // 16
+VOCAB_SIZE = 20
+MAX_SEQ_LEN = 16
 PAD_IDX = 0
 EOS_IDX = 1
 
@@ -75,17 +75,28 @@ def create_dummy_data(seq_len, batch_size):
     
     return x, y
 
-EXPECTED_OPTIM_STEPS = 10000
-MINI_BATCH_PER_STEP = 1
+# EXPECTED_OPTIM_STEPS = 10000
+# MINI_BATCH_PER_STEP = 1
 
 
 
-model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
+# model = Test(D_MODEL, N_HEADS, VOCAB_SIZE, MAX_SEQ_LEN, PAD_IDX)
 
-BATCH_SIZE = 12
+BATCH_SIZE = 128
 x, y = create_dummy_data(MAX_SEQ_LEN, BATCH_SIZE)
 
 
-optimizer = AdamW(model.parameters(), lr=0.0001, precision=(xp.float16, xp.float16))
-print('asdfasdf')
-model.train(x, y, epochs=100, optimizer=optimizer)
+
+# optimizer = AdamW(model.parameters(), lr=0.001, precision=(xp.float16, xp.float32))
+# print('asdfasdf')
+# model.train(x, y, epochs=100, optimizer=optimizer)
+
+if __name__ == "__main__":
+
+
+    model = Test(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN, pad_idx=PAD_IDX)
+    model._build((128, 15))
+    optimizer = AdamW(model.parameters(), lr=0.001, precision=(xp.float32, xp.float32))
+
+
+    model.train(x, y, epochs=1000, optimizer=optimizer)

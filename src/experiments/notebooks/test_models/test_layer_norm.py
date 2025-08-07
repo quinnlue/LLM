@@ -2,7 +2,7 @@ import sys
 import os
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
 
 from src.core.module import Module
 from src.core.tensor import Tensor
@@ -12,8 +12,12 @@ import numpy as np
 # ---------- helpers ----------
 
 def assert_allclose(a, b, atol=1e-3, rtol=1e-3):
-    """Wrapper around xp.allclose with a helpful error message."""
-    assert np.allclose(a, b, atol=atol, rtol=rtol), f"\n{a}\n!=\n{b}"
+    try:
+        assert np.allclose(a, b, atol=atol, rtol=rtol)
+    except:
+        print(a)
+        print(b)
+        raise AssertionError(f"\n{a}\n!=\n{b}")
 
 
 # ---------- tests ----------

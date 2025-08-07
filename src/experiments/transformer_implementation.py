@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 
 
+NUM_HEADS = 4
 src = np.random.randint(low=1, high=16, size=(128, 16))
 x = src[:, :-1]
 y = src[:, 1:]
@@ -27,27 +28,14 @@ class Net(Module):
         super().__init__()
         self.e = self.embedding(vocab_size, d_model, max_seq_len, pad_idx, name="Embedding")
 
-        self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.heads = [self.transformer(d_model=d_model, n_heads=n_heads) for _ in range(NUM_HEADS)]
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
         x, padding_mask = self.e.get_sentence_embedding(idx)
         x = Tensor(x.data, requires_grad=False)
-        x = self.head1(x, padding_mask)
-        x = self.head2(x, padding_mask)
-        x = self.head3(x, padding_mask)
-        # x = self.head4(x, padding_mask)
-        # x = self.head5(x, padding_mask)
-        # x = self.head6(x, padding_mask)
-        # x = self.head7(x, padding_mask)
-        # x = self.head8(x, padding_mask)
+        for head in self.heads:
+            x = head(x, padding_mask)
         x = self.project(x)
         return x
 
@@ -66,7 +54,7 @@ class Net(Module):
 if __name__ == "__main__":
     D_MODEL = 48
     VOCAB_SIZE = 20
-    N_HEADS = 2
+    N_HEADS = 4
     MAX_SEQ_LEN = 32
     PAD_IDX = 0
 

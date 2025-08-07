@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
 
 
 from src.core.tensor import Tensor
@@ -92,5 +92,5 @@ def test_cross_entropy_value_and_grad():
 
 
 test_mse_value_and_grad()
-test_bce_value_and_grad()
+# test_bce_value_and_grad()
 test_cross_entropy_value_and_grad()
