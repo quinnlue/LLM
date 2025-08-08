@@ -30,7 +30,6 @@ class Model(Module):
             checkpoint_dir: str,
             epochs: int,
             mini_batch_per_step: int,
-            dataloader: DataLoader,
         ):
         super().__init__()
 
