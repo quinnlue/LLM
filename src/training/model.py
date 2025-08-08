@@ -121,7 +121,7 @@ class Model(Module):
                 if (i + 1) % self.mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
-                    train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean()}")
+                    train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean() * self.mini_batch_per_step}")
 
                 # checkpointing & validation
                 if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
