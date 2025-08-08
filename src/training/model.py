@@ -110,17 +110,18 @@ class Model(Module):
         
     def train(
         self, 
+        optimizer: Optimizer,
     ):
         last_cp_time = time.perf_counter()
 
         for epoch in range(self.epochs):
             for i, batch in enumerate(tqdm(self.dataloader, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
-                loss = CrossEntropy(y_hat, batch[:,1:])/self.mini_batch_per_step
+                loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
                 loss.backward()
                 if (i + 1) % self.mini_batch_per_step == 0:
-                    self.optimizer.step()
-                    self.optimizer.zero_grad()
+                    optimizer.step()
+                    optimizer.zero_grad()
                 train_logger.info(f"Training loss: {loss.data}")
 
                 # checkpointing & validation
