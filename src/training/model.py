@@ -44,14 +44,6 @@ class Model(Module):
         self.epochs = epochs
         self.mini_batch_per_step = mini_batch_per_step
 
-
-
-        # Data  ------------------------------------------
-        self.dataloader = dataloader
-        self.x_column = dataloader.x_column
-        self.is_binned = dataloader.is_binned
-        self.bin_column = dataloader.bin_column
-
         # VARIABLES ---------------------------------------
         self.best_val_loss = float("inf")
 
