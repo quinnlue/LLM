@@ -97,8 +97,8 @@ class Model(Module):
     #         # xp._default_memory_pool = xp._memory.MemoryPool()
     #         # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
 
-    def checkpoint(self):
-        val_loss = self.evaluate()
+    def checkpoint(self, val_dl: DataLoader):
+        val_loss = self.evaluate(val_dl)
         val_logger.info(f"Validation loss: {val_loss}")
         cp_path = os.path.join(self.CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.save_checkpoint(self.optimizer, cp_path)
@@ -107,6 +107,7 @@ class Model(Module):
         self, 
         optimizer: Optimizer,
         dl: DataLoader,
+        val_dl: DataLoader,
     ):
         last_cp_time = time.perf_counter()
         loss_history = []
@@ -125,7 +126,7 @@ class Model(Module):
                 # checkpointing & validation
                 # if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
                 if True:
-                    self.checkpoint()
+                    self.checkpoint(val_dl)
                     last_cp_time = time.perf_counter()
                     return
 

@@ -90,7 +90,7 @@ optimizer = AdamW(
     precision=(xp.float16, xp.float32)
 )
 
-model.train(optimizer, train_dl)
+model.train(optimizer, train_dl, val_dl)
 
 
 new_model = Model(
