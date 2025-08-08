@@ -88,7 +88,7 @@ class Model(Module):
     
     def evaluate(self):
         dl = DataLoader(
-            val_dir=self.VAL_DIR,
+            path=self.VAL_DIR,
             x_column=self.x_column,
             is_binned=self.is_binned,
             bin_column=self.bin_column,

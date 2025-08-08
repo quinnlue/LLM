@@ -53,7 +53,7 @@ scheduler = LRScheduler(
 
 
 dl = DataLoader(
-    path=TRAIN_DIR,
+    path=VAL_DIR,
     x_column=DATA_COLUMN,
     is_binned=True,
     bin_column=BIN_COLUMN,
