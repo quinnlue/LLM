@@ -116,10 +116,11 @@ class Model(Module):
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
                 loss_history.append(float(loss.data))
                 loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
                 self._gc()
-                if (i + 1) % self.mini_batch_per_step == 0:
-                    optimizer.step()
-                    optimizer.zero_grad()
+
+                if (i + 1) % 25 == 0:
                     train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean() * self.mini_batch_per_step}")
 
                 # checkpointing & validation
