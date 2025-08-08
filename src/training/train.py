@@ -91,3 +91,22 @@ optimizer = AdamW(
 )
 
 model.train(optimizer, train_dl)
+
+
+new_model = Model(
+    vocab_size=VOCAB_SIZE,
+    d_model=D_MODEL,
+    max_seq_len=MAX_SEQ_LEN,
+    pad_idx=PAD_IDX,
+    n_heads=N_HEADS,
+    max_tokens_per_mini_batch=MAX_TOKENS_PER_MINI_BATCH,
+    transformer_depth=DEPTH,
+    checkpoint_interval_seconds=CHECKPOINT_INTERVAL_SECONDS,
+    train_dir=TRAIN_DIR,
+    validation_dir=VAL_DIR,
+    checkpoint_dir=CHECKPOINT_DIR,
+    epochs=EPOCHS,
+    mini_batch_per_step=MINI_BATCH_PER_STEP,
+)
+
+new_model.load_checkpoint(CHECKPOINT_DIR)

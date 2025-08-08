@@ -89,13 +89,13 @@ class Model(Module):
             losses.append(loss.data)
         return xp.mean(xp.array(losses))
 
-    def _gc(self):
-        gc.collect()
-        if self.is_cuda:
-            xp.get_default_memory_pool().free_all_blocks()
-            xp.get_default_pinned_memory_pool().free_all_blocks()
-            # xp._default_memory_pool = xp._memory.MemoryPool()
-            # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
+    # def _gc(self):
+    #     gc.collect()
+    #     if self.is_cuda:
+    #         xp.get_default_memory_pool().free_all_blocks()
+    #         xp.get_default_pinned_memory_pool().free_all_blocks()
+    #         # xp._default_memory_pool = xp._memory.MemoryPool()
+    #         # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
 
     def checkpoint(self):
         val_loss = self.evaluate()
@@ -117,17 +117,18 @@ class Model(Module):
                 loss_history.append(float(loss.data))
 
                 loss.backward()
-                self._gc()
                 if (i + 1) % self.mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
                     train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean() * self.mini_batch_per_step}")
 
                 # checkpointing & validation
-                if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
+                # if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
+                if True:
                     self.checkpoint()
                     last_cp_time = time.perf_counter()
-                    self._gc()
+                    return
+
 
 
 

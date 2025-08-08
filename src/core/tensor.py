@@ -405,11 +405,14 @@ class Tensor:
         if self not in _visited:
             _visited[self] = grad
         else:
-            _visited[self] += grad
+            _visited[self].data += grad.data
             return
 
         # store the total gradient
-        self.grad = _visited[self]
+        if self.grad is None:
+            self.grad = _visited[self]
+        else:
+            self.grad.data += _visited[self].data
 
         # propagate once to each parent
         if self.grad_fn is not None:
