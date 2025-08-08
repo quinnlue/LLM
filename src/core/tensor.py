@@ -405,21 +405,18 @@ class Tensor:
         if self not in _visited:
             _visited[self] = grad
         else:
-            _visited[self].data += grad.data
+            _visited[self] += grad
             return
 
         # store the total gradient
-        if self.grad is None:
-            self.grad = _visited[self]
-        else:
-            self.grad.data += _visited[self].data
+        self.grad = _visited[self]
 
         # propagate once to each parent
         if self.grad_fn is not None:
             # Save a local copy, then immediately sever the links so the
             # graph from this Tensor backward is eligible for GC.
             parents_local = self.parents
-            grads = self.grad_fn(self.grad)
+            grads         = self.grad_fn(self.grad)
 
             # *******  CRUCIAL: break reference cycles  *******
             self.grad_fn = None
