@@ -80,18 +80,13 @@ class Model(Module):
         x = self.project(x)
         return x
     
-    def evaluate(self, dl, optimizer: Optimizer):
+    def evaluate(self, dl):
         losses = []
         for batch in tqdm(dl, desc="Evaluating"):
+            batch.requires_grad = False
             y_hat = self.forward(batch[:,:-1])
-            print(f"Y_hat: {y_hat.data.shape}")
-            print(f"Batch: {batch.data.shape}")
-            print(f"Tgt: {batch[:,1:].data.shape}")
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
-            loss.backward()
-            optimizer.zero_grad()
-
             print(f"Loss: {loss.data}")
         return xp.mean(xp.array(losses))
 
@@ -103,9 +98,9 @@ class Model(Module):
     #         # xp._default_memory_pool = xp._memory.MemoryPool()
     #         # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
 
-    def checkpoint(self, optimizer: Optimizer, val_dl: DataLoader):
-        val_loss = self.evaluate(val_dl)
-        val_logger.info(f"Validation loss: {val_loss}")
+    def checkpoint(self, optimizer: Optimizer):
+        # val_loss = self.evaluate(val_dl)
+        # val_logger.info(f"Validation loss: {val_loss}")
         cp_path = os.path.join(self.CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.save_checkpoint(optimizer, cp_path)
         
@@ -113,7 +108,6 @@ class Model(Module):
         self, 
         optimizer: Optimizer,
         dl: DataLoader,
-        val_dl: DataLoader,
     ):
         last_cp_time = time.perf_counter()
         loss_history = []
@@ -130,13 +124,12 @@ class Model(Module):
                     optimizer.zero_grad()
                     train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean() * self.mini_batch_per_step}")
 
-                # checkpointing & validation
-                # if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
-                if True:
-                    self.checkpoint(optimizer, val_dl)
-                    last_cp_time = time.perf_counter()
-                    self._gc()
-                    return
+                # checkpointing & validation (i dont give a damn)
+                if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
+                    self.checkpoint(optimizer)
+                #     last_cp_time = time.perf_counter()
+                #     self._gc()
+                #     return
 
 
 
