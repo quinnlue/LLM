@@ -80,7 +80,7 @@ class Model(Module):
         x = self.project(x)
         return x
     
-    def evaluate(self, dl):
+    def evaluate(self, dl, optimizer: Optimizer):
         losses = []
         for batch in tqdm(dl, desc="Evaluating"):
             y_hat = self.forward(batch[:,:-1])
@@ -89,6 +89,8 @@ class Model(Module):
             print(f"Tgt: {batch[:,1:].data.shape}")
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
+            loss.backward()
+            optimizer.zero_grad()
 
             print(f"Loss: {loss.data}")
         return xp.mean(xp.array(losses))
