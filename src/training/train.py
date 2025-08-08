@@ -12,6 +12,7 @@ from src.tokenizer.tokenizer import tokenizer
 from src.utils.lr_scheduler import LRScheduler
 from src.utils.backend import xp
 from src.utils.logger import train_logger, val_logger
+from src.training.model import Model
 
 from tqdm import tqdm
 import time
@@ -26,87 +27,70 @@ TEST_DIR = r"data/test"
 CHECKPOINT_DIR = r"checkpoints"
 
 # MODEL HYPERPARAMETERS ------------------------------
-
-VOCAB_SIZE = len(tokenizer.get_vocab())
+VOCAB_SIZE = len(tokenizer.get_vocab()) # 21680
 D_MODEL = 768
-N_HEADS = D_MODEL // 64
-MAX_SEQ_LEN = 548 # CLIP TO 512 DURING INFERENCE
+N_HEADS = 12
+MAX_SEQ_LEN = 548
 PAD_IDX = 0
 EOS_IDX = 1
 DEPTH = 12
-EXPECTED_OPTIM_STEPS = 20000
+
+# DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 24
-MAX_TOKENS_PER_MINI_BATCH = 20000
+MAX_TOKENS_PER_MINI_BATCH = 600
+DATA_COLUMN = "seq"
+BIN_COLUMN = "bin"
+
+# OPTIMIZER HYPERPARAMETERS ------------------------------
+EPOCHS = 2
+EXPECTED_OPTIM_STEPS = 20000
+WARMUP_STEPS = int(EXPECTED_OPTIM_STEPS * 0.03)
+MIN_LR = 1e-5
+MAX_LR = 3e-4
+FINAL_LR = 1e-6
+CHECKPOINT_INTERVAL_SECONDS = 3600
 
 
 
-class Model(Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads, depth,checkpoint_interval_seconds: int = 3600):
-        super().__init__()
-        self.checkpoint_interval_seconds = checkpoint_interval_seconds
-        self.best_val_loss = float("inf")
-        self.e = self.embedding(vocab_size, d_model, max_seq_len, pad_idx)
-        self.depth = depth
-        self.heads = [self.transformer(d_model=d_model, n_heads=n_heads) for _ in range(depth)]
+scheduler = LRScheduler(
+    warmup_steps=WARMUP_STEPS,
+    total_steps=EXPECTED_OPTIM_STEPS,
+    min_lr=MIN_LR,
+    max_lr=MAX_LR,
+    final_lr=FINAL_LR
+    )
 
 
-        self.project = self.linear(d_model, vocab_size, module_type="linear", layer_type="linear", name="project")
-    
-    def forward(self, idx):
-        x, padding_mask = self.e.get_sentence_embedding(idx)
-        for head in self.heads:
-            x = head(x, padding_mask)
-        x = self.project(x)
-        return x
-    
-    def evaluate(self):
-        dl = DataLoader(VAL_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
-        losses = []
-        for batch in tqdm(dl, desc="Evaluating"):
-            batch.requires_grad = False
-            y_hat = self.forward(batch[:,:-1])
-            loss = CrossEntropy(y_hat, batch[:,1:])
-            losses.append(loss.data)
-        return xp.mean(xp.array(losses))
+dl = DataLoader(
+    train_dir=TRAIN_DIR,
+    x_column=DATA_COLUMN,
+    is_binned=True,
+    bin_column=BIN_COLUMN,
+    max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+)
 
-    def checkpoint(self, optimizer):
-        val_loss = self.evaluate()
-        val_logger.info(f"Validation loss: {val_loss}")
-        cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        self.save_checkpoint(optimizer, cp_path)
-        
-    def train(self, epochs: int, dataloader: DataLoader, optimizer, mini_batch_per_step):
-        last_cp_time = time.perf_counter()
+model = Model(
+    vocab_size=VOCAB_SIZE,
+    d_model=D_MODEL,
+    max_seq_len=MAX_SEQ_LEN,
+    pad_idx=PAD_IDX,
+    n_heads=N_HEADS,
+    max_tokens_per_mini_batch=MAX_TOKENS_PER_MINI_BATCH,
+    transformer_depth=DEPTH,
+    checkpoint_interval_seconds=CHECKPOINT_INTERVAL_SECONDS,
+    train_dir=TRAIN_DIR,
+    validation_dir=VAL_DIR,
+    checkpoint_dir=CHECKPOINT_DIR,
+    epochs=EPOCHS,
+    mini_batch_per_step=MINI_BATCH_PER_STEP,
+    dataloader=dl,
+)
 
-        for epoch in range(epochs):
-            for i, batch in enumerate(tqdm(dataloader, desc=f"Training epoch {epoch}")):
-                y_hat = self.forward(batch[:,:-1])
-                loss = CrossEntropy(y_hat, batch[:,1:])/mini_batch_per_step
-                loss.backward()
-                if (i + 1) % mini_batch_per_step == 0:
-                    optimizer.step()
-                    optimizer.zero_grad()
-                train_logger.info(f"Training loss: {loss.data}")
+optimizer = AdamW(
+    params=model.parameters(),
+    lr=scheduler,
+    precision=(xp.float16, xp.float32)
+)
 
-                # checkpointing & validation
-                if time.perf_counter() - last_cp_time > self.checkpoint_interval_seconds:
-                    self.checkpoint(optimizer, CHECKPOINT_DIR)
-                    last_cp_time = time.perf_counter()
 
-if __name__ == "__main__":
-    scheduler = LRScheduler(
-        warmup_steps=EXPECTED_OPTIM_STEPS // 100 * 3,
-        total_steps=EXPECTED_OPTIM_STEPS,
-        min_lr=1e-5,
-        max_lr=3e-4,
-        final_lr=1e-6
-        )
-    
-    model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS, DEPTH)
-    optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32))
-
-    dl = DataLoader(TRAIN_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=MAX_TOKENS_PER_MINI_BATCH)
-
-    # data set is about 7b tokens
-    model.train(epochs=2, dataloader=dl, optimizer=optimizer, mini_batch_per_step=MINI_BATCH_PER_STEP)
-
+model.train(optimizer)

@@ -3,10 +3,10 @@ from src.utils.backend import xp
 
 is_cuda = xp.__name__ == "cupy"
 
-def MSE(y_hat: Tensor, y: Tensor):
+def MeanSquaredError(y_hat: Tensor, y: Tensor):
     return ((y_hat - y) ** 2).mean().exp().log()
 
-def BCE(logits: Tensor, y: Tensor):
+def BinaryCrossEntropyWithLogits(logits: Tensor, y: Tensor):
     max_logits = xp.maximum(logits.data, 0)
     log_term = xp.log1p(xp.exp(-xp.abs(logits.data)))
     loss_data = (max_logits - logits.data * y.data + log_term).mean()
@@ -21,24 +21,28 @@ def BCE(logits: Tensor, y: Tensor):
         out.grad_fn = grad_fn
     return out
 
-def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
+def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
     eps = 1e-10
 
-    if logits.data.ndim == 3:  # (B, S, V)
+
+    # Handle (B, S, V) and (B, V)
+    if logits.data.ndim == 3:
         pass
-    elif logits.data.ndim == 2:  # (B, V)
-        logits = logits[:, None, :]        # → (B, 1, V)
-        y = y[:, None]                     # → (B, 1)
+    elif logits.data.ndim == 2:
+        # Add a dimension if logits is (B, V)
+        logits = logits[:, None, :]
+        y = y[:, None]
     else:
         raise ValueError(f"Unsupported logits shape: {logits.data.shape}")
     
-    
+    # Calculate softmax
     max_logits = logits.data.max(axis=axis, keepdims=True)
     shifted_logits = logits.data - max_logits
     logsumexp = xp.log(xp.sum(xp.exp(shifted_logits), axis=axis, keepdims=True) + eps)
     log_softmax = shifted_logits - logsumexp
     
-    B, S, V = log_softmax.shape
+    # Indexing
+    B, S, _ = log_softmax.shape
     batch_idx = xp.arange(B)[:, None]
     seq_idx = xp.arange(S)[None, :]  
     tgt_idx = xp.array(y.data).astype(xp.int32)
@@ -47,6 +51,7 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
     #     mask = y.data != pad_idx
     #     tgt_idx = tgt_idx * mask
 
+    # Get the target log probabilities
     idx = (batch_idx, seq_idx, tgt_idx)
     target_log_probs = log_softmax[idx]
     loss_data = -target_log_probs.mean()
@@ -64,7 +69,6 @@ def CrossEntropy(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
             
             factor = 1 / (logits.data.shape[0] * logits.data.shape[1])
             grad_out = grad_input * factor * grad.data
-            # BUG: must return a Tensor, not a raw array
             return (Tensor(grad_out, requires_grad=False),)
         out.grad_fn = grad_fn
 
