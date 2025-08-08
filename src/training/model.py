@@ -87,6 +87,7 @@ class Model(Module):
             y_hat = self.forward(batch[:,:-1])
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
+            print(f"Loss: {loss.data}")
         return xp.mean(xp.array(losses))
 
     def _gc(self):

@@ -109,4 +109,11 @@ new_model = Model(
     mini_batch_per_step=MINI_BATCH_PER_STEP,
 )
 
-new_model.load_checkpoint(CHECKPOINT_DIR)
+new_optimizer = AdamW(
+    params=model.parameters(),
+    lr=scheduler,
+    precision=(xp.float16, xp.float32)
+)
+
+new_model.load_checkpoint(new_optimizer, CHECKPOINT_DIR)
+print("Loaded checkpoint")
