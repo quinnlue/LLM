@@ -86,14 +86,7 @@ class Model(Module):
         x = self.project(x)
         return x
     
-    def evaluate(self):
-        dl = DataLoader(
-            path=self.VAL_DIR,
-            x_column=self.x_column,
-            is_binned=self.is_binned,
-            bin_column=self.bin_column,
-            max_tokens=self.MAX_TOKENS_PER_MINI_BATCH
-        )
+    def evaluate(self, dl):
         losses = []
         for batch in tqdm(dl, desc="Evaluating"):
             batch.requires_grad = False
@@ -111,11 +104,12 @@ class Model(Module):
     def train(
         self, 
         optimizer: Optimizer,
+        dl: DataLoader,
     ):
         last_cp_time = time.perf_counter()
 
         for epoch in range(self.epochs):
-            for i, batch in enumerate(tqdm(self.dataloader, desc=f"Training epoch {epoch}")):
+            for i, batch in enumerate(tqdm(dl, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
                 loss.backward()

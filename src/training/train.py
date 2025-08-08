@@ -52,8 +52,16 @@ scheduler = LRScheduler(
     )
 
 
-dl = DataLoader(
+train_dl = DataLoader(
     path=TRAIN_DIR,
+    x_column=DATA_COLUMN,
+    is_binned=True,
+    bin_column=BIN_COLUMN,
+    max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+)
+
+val_dl = DataLoader(
+    path=VAL_DIR,
     x_column=DATA_COLUMN,
     is_binned=True,
     bin_column=BIN_COLUMN,
@@ -74,7 +82,6 @@ model = Model(
     checkpoint_dir=CHECKPOINT_DIR,
     epochs=EPOCHS,
     mini_batch_per_step=MINI_BATCH_PER_STEP,
-    dataloader=dl,
 )
 
 optimizer = AdamW(
@@ -83,7 +90,4 @@ optimizer = AdamW(
     precision=(xp.float16, xp.float32)
 )
 
-
-print(model.evaluate())
-
-# model.train(optimizer)
+model.train(optimizer, train_dl)
