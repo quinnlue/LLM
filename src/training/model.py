@@ -114,7 +114,7 @@ class Model(Module):
             for i, batch in enumerate(tqdm(dl, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
-                print(loss.data.shape)
+                print(loss.data)
                 raise Exception("Stop")
                 
                 loss_history.append(float(loss.data))
