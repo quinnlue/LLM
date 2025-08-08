@@ -416,7 +416,7 @@ class Tensor:
             # Save a local copy, then immediately sever the links so the
             # graph from this Tensor backward is eligible for GC.
             parents_local = self.parents
-            grads         = self.grad_fn(self.grad)
+            grads = self.grad_fn(self.grad)
 
             # *******  CRUCIAL: break reference cycles  *******
             self.grad_fn = None
