@@ -94,8 +94,8 @@ class Model(Module):
         if self.is_cuda:
             xp.get_default_memory_pool().free_all_blocks()
             xp.get_default_pinned_memory_pool().free_all_blocks()
-            xp._default_memory_pool = xp._memory.MemoryPool()
-            xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
+            # xp._default_memory_pool = xp._memory.MemoryPool()
+            # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
 
     def checkpoint(self):
         val_loss = self.evaluate()
