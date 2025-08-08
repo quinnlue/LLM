@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 import numpy as np
 import gc
+from cupy import _memory as memory
 
 class Model(Module):
     def __init__(
@@ -94,8 +95,8 @@ class Model(Module):
         if self.is_cuda:
             xp.get_default_memory_pool().free_all_blocks()
             xp.get_default_pinned_memory_pool().free_all_blocks()
-            xp._default_memory_pool = xp.MemoryPool()  # Reset default pool
-            xp._default_pinned_memory_pool = xp.PinnedMemoryPool()  # Reset pinned pool
+            xp._default_memory_pool = memory.MemoryPool()
+            xp._default_pinned_memory_pool = memory.PinnedMemoryPool()
 
     def checkpoint(self):
         val_loss = self.evaluate()
