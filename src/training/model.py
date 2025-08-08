@@ -84,6 +84,9 @@ class Model(Module):
         losses = []
         for batch in tqdm(dl, desc="Evaluating"):
             y_hat = self.forward(batch[:,:-1])
+            print(f"Y_hat: {y_hat.data.shape}")
+            print(f"Batch: {batch.data.shape}")
+            print(f"Tgt: {batch[:,1:].data.shape}")
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
 
