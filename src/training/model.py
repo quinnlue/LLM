@@ -115,8 +115,9 @@ class Model(Module):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
                 print(loss.data.shape)
+                raise Exception("Stop")
                 
-                loss_history.append(float(loss.data[0]))
+                loss_history.append(float(loss.data))
 
                 loss.backward()
                 self._gc()
