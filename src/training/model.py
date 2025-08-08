@@ -13,6 +13,7 @@ from tqdm import tqdm
 import time
 from datetime import datetime
 import numpy as np
+import gc
 
 class Model(Module):
     def __init__(
@@ -40,6 +41,7 @@ class Model(Module):
         self.CHECKPOINT_DIR = checkpoint_dir
         self.MAX_TOKENS_PER_MINI_BATCH = max_tokens_per_mini_batch
         self.PAD = pad_idx
+        self.is_cuda = xp.__name__ == "cupy"
 
         self.epochs = epochs
         self.mini_batch_per_step = mini_batch_per_step
@@ -87,6 +89,14 @@ class Model(Module):
             losses.append(loss.data)
         return xp.mean(xp.array(losses))
 
+    def _gc(self):
+        gc.collect()
+        if self.is_cuda:
+            xp.get_default_memory_pool().free_all_blocks()
+            xp.get_default_pinned_memory_pool().free_all_blocks()
+            xp._default_memory_pool = xp.MemoryPool()  # Reset default pool
+            xp._default_pinned_memory_pool = xp.PinnedMemoryPool()  # Reset pinned pool
+
     def checkpoint(self):
         val_loss = self.evaluate()
         val_logger.info(f"Validation loss: {val_loss}")
@@ -106,6 +116,7 @@ class Model(Module):
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
                 loss_history.append(loss.data)
                 loss.backward()
+                self._gc()
                 if (i + 1) % self.mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
@@ -115,5 +126,7 @@ class Model(Module):
                 if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
                     self.checkpoint()
                     last_cp_time = time.perf_counter()
+                    self._gc()
+
 
 
