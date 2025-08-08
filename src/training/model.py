@@ -12,6 +12,7 @@ from src.core.optim import Optimizer
 from tqdm import tqdm
 import time
 from datetime import datetime
+import numpy as np
 
 class Model(Module):
     def __init__(
@@ -107,16 +108,17 @@ class Model(Module):
         dl: DataLoader,
     ):
         last_cp_time = time.perf_counter()
-
+        loss_history = []
         for epoch in range(self.epochs):
             for i, batch in enumerate(tqdm(dl, desc=f"Training epoch {epoch}")):
                 y_hat = self.forward(batch[:,:-1])
                 loss = CrossEntropyWithLogits(y_hat, batch[:,1:])/self.mini_batch_per_step
+                loss_history.append(loss.data)
                 loss.backward()
                 if (i + 1) % self.mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
-                    train_logger.info(f"Training loss: {loss.data}")
+                    train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean()}")
 
                 # checkpointing & validation
                 if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
