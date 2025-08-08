@@ -84,6 +84,6 @@ optimizer = AdamW(
 )
 
 
-model.evaluate()
+print(model.evaluate())
 
 # model.train(optimizer)
