@@ -87,6 +87,7 @@ class Model(Module):
             y_hat = self.forward(batch[:,:-1])
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
+            
             print(f"Loss: {loss.data}")
         return xp.mean(xp.array(losses))
 
@@ -128,7 +129,7 @@ class Model(Module):
                 # checkpointing & validation
                 # if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
                 if True:
-                    self.checkpoint(optimizer, dl)
+                    self.checkpoint(optimizer, val_dl)
                     last_cp_time = time.perf_counter()
                     self._gc()
                     return

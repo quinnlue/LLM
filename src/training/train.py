@@ -90,6 +90,8 @@ optimizer = AdamW(
     precision=(xp.float16, xp.float32)
 )
 
+model.evaluate(val_dl)
+raise Exception "stop   "
 model.train(optimizer, train_dl, val_dl)
 
 
