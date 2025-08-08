@@ -89,8 +89,8 @@ class Model(Module):
             losses.append(loss.data)
         return xp.mean(xp.array(losses))
 
-    # def _gc(self):
-    #     gc.collect()
+    def _gc(self):
+        gc.collect()
     #     if self.is_cuda:
     #         xp.get_default_memory_pool().free_all_blocks()
     #         xp.get_default_pinned_memory_pool().free_all_blocks()
@@ -118,6 +118,7 @@ class Model(Module):
                 loss_history.append(float(loss.data))
 
                 loss.backward()
+                self._gc()
                 if (i + 1) % self.mini_batch_per_step == 0:
                     optimizer.step()
                     optimizer.zero_grad()
@@ -128,6 +129,7 @@ class Model(Module):
                 if True:
                     self.checkpoint(val_dl)
                     last_cp_time = time.perf_counter()
+                    self._gc()
                     return
 
 
