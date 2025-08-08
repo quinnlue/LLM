@@ -75,16 +75,15 @@ class DataLoader:
                     if len(group) - start < examples_per_batch:
                         break
 
-                    batches.append(Tensor(
-                        np.stack(group.iloc[start:start+examples_per_batch][dataset.x_column].values), 
-                        requires_grad=False
-                    ))
+                    batches.append(
+                        np.stack(group.iloc[start:start+examples_per_batch][dataset.x_column].values)
+                        )
 
             if shuffle:
                 random.shuffle(batches)
             
             for batch in batches:
-                yield batch
+                yield Tensor(batch, requires_grad=False)
 
 
 
