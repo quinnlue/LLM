@@ -91,7 +91,7 @@ optimizer = AdamW(
 )
 
 model.evaluate(val_dl)
-raise Exception "stop   "
+raise Exception("Stop here")
 model.train(optimizer, train_dl, val_dl)
 
 
