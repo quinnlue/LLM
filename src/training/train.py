@@ -12,7 +12,7 @@ from src.training.model import Model
 
 # PATHS ------------------------------
 TRAIN_DIR = r"data/train"
-VAL_DIR = r"data/val"
+VAL_DIR = r"data/validation"
 TEST_DIR = r"data/test"
 
 CHECKPOINT_DIR = r"checkpoints"
