@@ -270,11 +270,13 @@ settings_local.py
 # Checkpoints
 checkpoints/
 
+
 # .vscode
 .vscode/
 
 # Pycache
 **/__pycache__/
+/__pycache__/
 
 
 profile.stats

@@ -1,9 +1,6 @@
 # Core ML and Scientific Computing
 numpy>=1.24.0
 cupy-cuda12x>=12.0.0
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
 
 # Data Processing and Analysis
 pandas>=2.0.0
@@ -28,7 +25,3 @@ pytest-cov>=4.1.0
 fastparquet>=2023.11.0
 pyarrow>=14.0.0
 
-# Optional: Flash Attention (commented out in torch_train.py)
-# flash-attn>=2.0.0 
-
-# pip install pandas tqdm matplotlib tokenizers pyarrow fastparquet numpy cupy-cuda12x
