@@ -27,8 +27,8 @@ EOS_IDX = 1
 DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
-MINI_BATCH_PER_STEP = 24
-MAX_TOKENS_PER_MINI_BATCH = 600
+MINI_BATCH_PER_STEP = 10
+MAX_TOKENS_PER_MINI_BATCH = 20000
 DATA_COLUMN = "seq"
 BIN_COLUMN = "bin"
 
@@ -53,7 +53,7 @@ scheduler = LRScheduler(
 
 
 dl = DataLoader(
-    path=VAL_DIR,
+    path=TRAIN_DIR,
     x_column=DATA_COLUMN,
     is_binned=True,
     bin_column=BIN_COLUMN,
@@ -84,4 +84,6 @@ optimizer = AdamW(
 )
 
 
-model.train(optimizer)
+model.evaluate()
+
+# model.train(optimizer)
