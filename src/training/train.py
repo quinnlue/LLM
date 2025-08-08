@@ -2,21 +2,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from src.core.module import Module
-from src.core.losses import CrossEntropy
 from src.core.optim import AdamW
-from src.core.tensor import Tensor
 from src.preprocess.dataloader import DataLoader
-from src.preprocess.dataloader import Dataset
 from src.tokenizer.tokenizer import tokenizer
 from src.utils.lr_scheduler import LRScheduler
 from src.utils.backend import xp
-from src.utils.logger import train_logger, val_logger
 from src.training.model import Model
-
-from tqdm import tqdm
-import time
-from datetime import datetime
 
 
 # PATHS ------------------------------
