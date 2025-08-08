@@ -128,7 +128,7 @@ class Model(Module):
                 # checkpointing & validation
                 # if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
                 if True:
-                    self.checkpoint(optimizer, val_dl)
+                    self.checkpoint(optimizer, dl)
                     last_cp_time = time.perf_counter()
                     self._gc()
                     return
