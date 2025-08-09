@@ -21,7 +21,7 @@ TRAIN_DIR  = r"data/train"
 VAL_DIR    = r"data/validation"
 CHECKPOINT_DIR = r"checkpoints"
 
-VOCAB_SIZE = len(tokenizer.get_vocab())     # 21680 in your data
+VOCAB_SIZE = len(tokenizer.get_vocab()) + 64   # 21680 in your data
 D_MODEL    = 768
 N_HEADS    = 12
 MAX_SEQ_LEN = 548
