@@ -99,7 +99,7 @@ class Module:
         layer_dict["params"].append({"type": param, "name": full_name, "param": param})
         
 
-    def layer_norm(self, axis: int = -1, module_type: str = "layer_norm", layer_type: str = "layernorm", name: str | None = None, module_dict=None, layer_dict=None, eps: float = 1e-4):
+    def layer_norm(self, axis: int = -1, module_type: str = "layer_norm", layer_type: str = "layernorm", name: str | None = None, module_dict=None, layer_dict=None, eps: float = 1e-5):
        if module_dict is None:
            module_dict = self.register_module(module_type)
        layer_dict = self.register_layer(layer_type, module_dict, name)
@@ -158,7 +158,7 @@ class Module:
 
 
 class LayerNorm(Module):
-    def __init__(self, axis, module_dict, layer_dict, eps=1e-4):
+    def __init__(self, axis, module_dict, layer_dict, eps=1e-5):
         super().__init__()
         self.eps = eps
         self.axis = axis

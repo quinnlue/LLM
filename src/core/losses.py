@@ -22,8 +22,7 @@ def BinaryCrossEntropyWithLogits(logits: Tensor, y: Tensor):
     return out
 
 def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
-    eps = 1e-10
-
+    eps = 1e-5
 
     # Handle (B, S, V) and (B, V)
     if logits.data.ndim == 3:
