@@ -234,6 +234,7 @@ class Standard(Optimizer):
         # Increase timestep
         self.t += 1
         lr_t = self.get_lr(self.t)
+        lr_t = 0.0005
 
         for param in self.params.values():
             if param['param'].grad is None:
