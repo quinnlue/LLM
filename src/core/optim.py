@@ -235,28 +235,40 @@ class Standard(Optimizer):
         self.t += 1
         lr_t = self.get_lr(self.t)
 
-        # Compute global grad-norm for clipping (L2)
-        total_norm = 0.0
         for param in self.params.values():
             if param['param'].grad is None:
                 continue
-            g = param['param'].grad.data
-            total_norm += (g ** 2).sum()
-        total_norm = xp.sqrt(total_norm)
 
-        clip_coef = 1.0
-        if total_norm > self.clip_norm:
-            clip_coef = self.clip_norm / (total_norm + 1e-6)
+            grad = param['param'].grad
+            grad = self._clip_norm(grad)
+            grad = self.reduce_like(grad, param['param'].data.shape)
 
-        # Parameter update
-        for param in self.params.values():
-            p_tensor = param['param']
-            grad = p_tensor.grad
-            if grad is None:
-                continue
-            # Broadcast-reduce if shapes mismatch (should rarely happen here)
-            if grad.data.shape != p_tensor.data.shape:
-                grad = self.reduce_like(grad, p_tensor.data.shape)
-            grad_data = grad.data * clip_coef
-            p_tensor.data -= lr_t * grad_data
+            param['param'].data -= lr_t * grad.data
+            del grad
+            
+
+        # # Compute global grad-norm for clipping (L2)
+        # total_norm = 0.0
+        # for param in self.params.values():
+        #     if param['param'].grad is None:
+        #         continue
+        #     g = param['param'].grad.data
+        #     total_norm += (g ** 2).sum()
+        # total_norm = xp.sqrt(total_norm)
+
+        # clip_coef = 1.0
+        # if total_norm > self.clip_norm:
+        #     clip_coef = self.clip_norm / (total_norm + 1e-6)
+
+        # # Parameter update
+        # for param in self.params.values():
+        #     p_tensor = param['param']
+        #     grad = p_tensor.grad
+        #     if grad is None:
+        #         continue
+        #     # Broadcast-reduce if shapes mismatch (should rarely happen here)
+        #     if grad.data.shape != p_tensor.data.shape:
+        #         grad = self.reduce_like(grad, p_tensor.data.shape)
+        #     grad_data = grad.data * clip_coef
+        #     p_tensor.data -= lr_t * grad_data
 
