@@ -87,7 +87,7 @@ model = Model(
 optimizer = AdamW(
     params=model.parameters(),
     lr=scheduler,
-    precision=(xp.float16, xp.float32),
+    precision=(xp.float32, xp.float32),
     clip_norm=1.0
 )
 
