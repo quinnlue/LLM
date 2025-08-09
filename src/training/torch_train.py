@@ -1,178 +1,211 @@
-import os
-import time
+import sys, os, math, time
 from datetime import datetime
-from tqdm import tqdm
-import pandas as pd
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+# ────────────────────────── 3rd-party ──────────────────────────
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import math
-import numpy as np
-# from flash_attn.flash_attention import FlashAttention  # Make sure flash_attn is installed
-import torch.nn.functional as F
+from torch.optim.lr_scheduler import LambdaLR
+from tqdm import tqdm
 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src.tokenizer.tokenizer import tokenizer
-from src.preprocess.dataloader import DataLoader
-from src.utils.logger import train_logger, val_logger
+# ────────────────────────── project deps ──────────────────────────
+from src.preprocess.dataloader import DataLoader            # yields xp-based batches
+from src.tokenizer.tokenizer import tokenizer               # yields vocab
+from src.utils.backend import xp                            # numpy | cupy
+from src.utils.logger import train_logger, val_logger       # existing loggers
 
-# --- Constants ---
-TRAIN_DIR = "data/train"
-VAL_DIR = "data/val"
-CHECKPOINT_DIR = "checkpoints"
+# ────────────────────────── constants (copied from train.py) ──────────────────────────
+TRAIN_DIR  = r"data/train"
+VAL_DIR    = r"data/validation"
+CHECKPOINT_DIR = r"checkpoints"
 
-VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 768
-N_HEADS = D_MODEL // 64
+VOCAB_SIZE = len(tokenizer.get_vocab())     # 21680 in your data
+D_MODEL    = 768
+N_HEADS    = 12
 MAX_SEQ_LEN = 548
-PAD_IDX = 0
-EOS_IDX = 1
-WARMUP_STEPS = 1600
-TOTAL_STEPS = 86400
-DEPTH = 12
+PAD_IDX    = 0
+EOS_IDX    = 1
+DEPTH      = 8            # transformer layers
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MINI_BATCH_PER_STEP      = 1
+MAX_TOKENS_PER_MINI_BATCH = 20_000
+DATA_COLUMN  = "seq"
+BIN_COLUMN   = "bin"
 
+EPOCHS                    = 1
+EXPECTED_OPTIM_STEPS      = 86_400
+WARMUP_STEPS              = int(EXPECTED_OPTIM_STEPS * 0.03)
+MIN_LR, MAX_LR, FINAL_LR  = 1e-5, 5e-4, 1e-6
+CHECKPOINT_INTERVAL_SECONDS = 3_600
 
-# --- Model Components ---
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=MAX_SEQ_LEN):
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ────────────────────────── Scheduler (ported from src/utils/lr_scheduler.py) ──────────────────────────
+def lr_schedule_lambda(step:int):
+    """Exact same warm-up / anneal / final-dip schedule used in the original code."""
+    if step < WARMUP_STEPS:                                 # warm-up
+        return MIN_LR + (MAX_LR - MIN_LR) * step / WARMUP_STEPS
+    anneal_steps  = EXPECTED_OPTIM_STEPS - WARMUP_STEPS
+    final_dip_steps = max(1, int(anneal_steps * 0.1))
+    anneal_steps  -= final_dip_steps
+    if step < WARMUP_STEPS + anneal_steps:                  # cosine/linear anneal
+        s = step - WARMUP_STEPS
+        return MAX_LR - (MAX_LR - MIN_LR) * s / anneal_steps
+    if step < EXPECTED_OPTIM_STEPS:                         # final dip
+        s = step - WARMUP_STEPS - anneal_steps
+        return MIN_LR - (MIN_LR - FINAL_LR) * s / final_dip_steps
+    return FINAL_LR
+
+# ────────────────────────── Model definition ──────────────────────────
+class TransformerLM(nn.Module):
+    """
+    1. Token  + learnable positional embeddings
+    2. DEPTH stacked nn.TransformerEncoderLayers (standard attention)
+    3. Projection to vocabulary
+    Equivalent tensor dimensions & call-signature to src/training/model.Model.forward().
+    """
+    def __init__(self,
+                 vocab_size:int,
+                 d_model:int,
+                 n_heads:int,
+                 depth:int,
+                 max_seq_len:int,
+                 pad_idx:int):
         super().__init__()
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.pe = pe.unsqueeze(0).to(device)
 
-    def forward(self, x):
-        # x shape: (batch, seq_len, d_model)
-        x = x + self.pe[:, :x.size(1)]
-        return x
-
-
-class VanillaAttentionLayer(nn.Module):
-    def __init__(self, d_model, n_heads):
-        super().__init__()
-        self.mha = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.ff = nn.Sequential(
-            nn.Linear(d_model, 4 * d_model),
-            nn.GELU(),
-            nn.Linear(4 * d_model, d_model),
-        )
-        self.norm2 = nn.LayerNorm(d_model)
-
-    def forward(self, x, padding_mask=None):
-        residual = x
-        seq_len = x.size(1)
-        causal_mask = torch.triu(torch.ones(seq_len, seq_len, device=x.device), 1).bool()
-        attn_out, _ = self.mha(x, x, x,
-                          attn_mask=causal_mask,
-                          key_padding_mask=padding_mask)
-        x = self.norm1(residual + attn_out)
-
-        residual = x
-        x = self.ff(x)
-        x = self.norm2(residual + x)
-
-        return x
-
-
-class Model(nn.Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx, n_heads):
-        super().__init__()
         self.pad_idx = pad_idx
-        self.embed = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_enc = PositionalEncoding(d_model, max_seq_len)
-        self.layers = nn.ModuleList([VanillaAttentionLayer(d_model, n_heads) for _ in range(DEPTH)])
-        self.project = nn.Linear(d_model, vocab_size)
+        self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
+        self.pos_emb   = nn.Embedding(max_seq_len, d_model)
+        self.dropout   = nn.Dropout(0.1)
 
-    def forward(self, idx):
-        # idx: (B, S)
-        padding_mask = idx == self.pad_idx  # (B, S)
-        x = self.embed(idx)  # (B, S, D)
-        x = self.pos_enc(x)
-        for layer in self.layers:
-            x = layer(x, padding_mask)
-        logits = self.project(x)  # (B, S, vocab_size)
+        encoder_layer  = nn.TransformerEncoderLayer(
+                            d_model=d_model,
+                            nhead=n_heads,
+                            dim_feedforward=d_model*4,
+                            dropout=0.1,
+                            activation='gelu',
+                            batch_first=True)   # (B, S, D)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=depth)
+        self.proj = nn.Linear(d_model, vocab_size)
+
+        # init
+        self._reset_parameters()
+
+    def _reset_parameters(self):
+        nn.init.normal_(self.token_emb.weight, mean=0, std=0.02)
+        nn.init.normal_(self.pos_emb.weight,   mean=0, std=0.02)
+        nn.init.normal_(self.proj.weight,      mean=0, std=0.02)
+        nn.init.zeros_(self.proj.bias)
+
+    def forward(self, idx:torch.Tensor) -> torch.Tensor:
+        """
+        idx : (batch, seq) LongTensor
+        returns logits : (batch, seq, vocab)
+        """
+        B, S = idx.shape
+        device = idx.device
+        pos_ids = torch.arange(S, dtype=torch.long, device=device).unsqueeze(0).expand(B, S)
+
+        x = self.token_emb(idx) + self.pos_emb(pos_ids)
+        x = self.dropout(x)
+
+        # bool mask : True where padding tokens
+        key_padding_mask = (idx == self.pad_idx)
+        x = self.transformer(x, src_key_padding_mask=key_padding_mask)
+
+        logits = self.proj(x)
         return logits
 
-    def evaluate(self, val_loader, loss_fn):
-        self.eval()
-        losses = []
-        with torch.no_grad():
-            for batch in tqdm(val_loader, desc="Evaluating"):
-                batch = torch.tensor(batch.data).to_device(device).long()
-                inputs = batch[:, :-1]
-                targets = batch[:, 1:]
-                logits = self.forward(inputs)
-                loss = loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-                losses.append(loss.item())
-        return sum(losses) / len(losses)
+# ────────────────────────── helpers ──────────────────────────
+def xp_to_torch(batch_xp):
+    """Convert a Tensor (cupy/numpy backed) to torch.LongTensor on DEVICE."""
+    # batch_xp is src.core.tensor.Tensor
+    arr = batch_xp.data
+    if xp.__name__ == "cupy":                # cupy → cpu numpy first
+        arr = xp.asnumpy(arr)
+    return torch.tensor(arr, dtype=torch.long, device=DEVICE)
 
-    def checkpoint(self, optimizer, val_loader, loss_fn):
-        val_loss = self.evaluate(val_loader, loss_fn)
-        print(f"[{datetime.now()}] Validation loss: {val_loss:.4f}")
-        cp_path = os.path.join(CHECKPOINT_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".pt")
-        torch.save({
-            'model_state_dict': self.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, cp_path)
+def save_checkpoint(model, optimizer, step:int):
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    ckpt_name = datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + f"_step{step}.pt"
+    torch.save({
+        "model_state": model.state_dict(),
+        "optim_state": optimizer.state_dict(),
+        "step": step,
+    }, os.path.join(CHECKPOINT_DIR, ckpt_name))
+    train_logger.info(f"Saved checkpoint → {ckpt_name}")
 
-    def train_model(self, epochs, train_loader, val_loader, optimizer, scheduler=None, loss_fn=None):
-        loss_fn = loss_fn or nn.CrossEntropyLoss(ignore_index=self.pad_idx)
-        last_cp_time = time.perf_counter()
-        self.to(device)
-        losses = []
-        for epoch in range(epochs):
+# ────────────────────────── data loaders (reuse existing parquet loader) ──────────────────────────
+train_dl = DataLoader(
+    path=TRAIN_DIR,
+    x_column=DATA_COLUMN,
+    is_binned=True,
+    bin_column=BIN_COLUMN,
+    max_tokens=MAX_TOKENS_PER_MINI_BATCH)
 
-            self.train()
-            for i, batch in enumerate(tqdm(train_loader, desc=f"Training epoch {epoch}")):
-                batch = torch.tensor(batch.data).to(device).long()
-                inputs = batch[:, :-1]
-                targets = batch[:, 1:]
+val_dl = DataLoader(
+    path=VAL_DIR,
+    x_column=DATA_COLUMN,
+    is_binned=True,
+    bin_column=BIN_COLUMN,
+    max_tokens=MAX_TOKENS_PER_MINI_BATCH)
 
-                optimizer.zero_grad()
-                logits = self.forward(inputs)
-                loss = loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-                loss.backward()
-                optimizer.step()
-                if scheduler:
-                    scheduler.step()
-                losses.append(loss.item())
-                if i % 1 == 0:
+# ────────────────────────── build model / optim / sched ──────────────────────────
+model = TransformerLM(
+    vocab_size=VOCAB_SIZE,
+    d_model=D_MODEL,
+    n_heads=N_HEADS,
+    depth=DEPTH,
+    max_seq_len=MAX_SEQ_LEN,
+    pad_idx=PAD_IDX).to(DEVICE)
 
-                    print(f"Training loss: {np.array(losses).mean():.4f}")
-                    losses = []
+criterion  = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+optimizer  = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), eps=1e-8)
+scheduler  = LambdaLR(optimizer, lr_schedule_lambda)
 
-                # checkpointing & validation
-                if time.perf_counter() - last_cp_time > 3600:  # 1 hour
-                    self.checkpoint(optimizer, val_loader, loss_fn)
-                    self.train()            # <-- switch back
-                    last_cp_time = time.perf_counter()
+# ────────────────────────── training loop ──────────────────────────
+global_step = 0
+last_ckpt_time = time.perf_counter()
 
+for epoch in range(EPOCHS):
+    epoch_loss = []
+    for batch in tqdm(train_dl, desc=f"Epoch {epoch}"):
+        batch_t = xp_to_torch(batch)               # (B, S)
+        inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
 
-# --- DataLoader / Dataset ---
-# Assume you have PyTorch Dataset and DataLoader implementations for your data already
+        logits = model(inp)                        # (B, S-1, V)
+        loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
+        loss = loss / MINI_BATCH_PER_STEP          # gradient accumulation if >1
+        loss.backward()
 
+        if (global_step + 1) % MINI_BATCH_PER_STEP == 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step(); optimizer.zero_grad()
+            scheduler.step()
 
-if __name__ == "__main__":
-    # You need to create train_dataset and val_dataset as torch.utils.data.Dataset instances
-    train_dl = DataLoader(TRAIN_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=32000)
-    val_dl = DataLoader(VAL_DIR, x_column="seq", is_binned=True, bin_column="bin", max_tokens=32000)
+        epoch_loss.append(loss.item() * MINI_BATCH_PER_STEP)
+        global_step += 1
 
-    model = Model(VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN, PAD_IDX, N_HEADS).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=3e-4)
+        # ─── logging ───
+        if global_step % 50 == 0:
+            train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
 
-    def lr_lambda(current_step):
-        if current_step < WARMUP_STEPS:
-            return float(current_step) / float(max(1, WARMUP_STEPS))
-        progress = float(current_step - WARMUP_STEPS) / float(max(1, TOTAL_STEPS - WARMUP_STEPS))
-        return 0.5 * (1.0 + math.cos(math.pi * progress))  # cosine decay to 0
+        # ─── checkpointing ───
+        if time.perf_counter() - last_ckpt_time > CHECKPOINT_INTERVAL_SECONDS:
+            save_checkpoint(model, optimizer, global_step)
+            last_ckpt_time = time.perf_counter()
 
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    train_logger.info(f"Epoch {epoch} avg loss: {sum(epoch_loss)/len(epoch_loss):.4f}")
 
-    model.train_model(epochs=3, train_loader=train_dl, val_loader=val_dl, optimizer=optimizer, scheduler=scheduler)
+    # ─── quick validation ───
+    model.eval()
+    with torch.no_grad():
+        val_losses = []
+        for vbatch in tqdm(val_dl, desc="valid"):
+            vb = xp_to_torch(vbatch)
+            logits = model(vb[:, :-1])
+            vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
+            val_losses.append(vl.item())
+    val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
+    model.train()
