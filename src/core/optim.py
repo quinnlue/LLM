@@ -243,9 +243,9 @@ class Standard(Optimizer):
             grad = self._clip_norm(grad)
             grad = self.reduce_like(grad, param['param'].data.shape)
 
-            param['param'].data -= lr_t * grad.data
+            param['param'].data = param['param'].data - lr_t * grad.data
             del grad
-            
+
 
         # # Compute global grad-norm for clipping (L2)
         # total_norm = 0.0
