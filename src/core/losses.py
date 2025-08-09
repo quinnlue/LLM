@@ -46,9 +46,9 @@ def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pa
     seq_idx = xp.arange(S)[None, :]  
     tgt_idx = xp.array(y.data).astype(xp.int32)
 
-    if use_mask:
-        mask = y.data != pad_idx
-        tgt_idx = tgt_idx * mask
+    # if use_mask:
+    #     mask = y.data != pad_idx
+    #     tgt_idx = tgt_idx * mask
 
     # Get the target log probabilities
     idx = (batch_idx, seq_idx, tgt_idx)
