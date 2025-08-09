@@ -88,7 +88,7 @@ optimizer = Standard(
     params=model.parameters(),
     lr=scheduler,
     # precision=(xp.float16, xp.float32),
-    clip_norm=10.0
+    clip_norm=1.0
 )
 
 model.train(optimizer, train_dl)
