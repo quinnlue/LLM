@@ -143,7 +143,7 @@ class Model(nn.Module):
                 if scheduler:
                     scheduler.step()
                 losses.append(loss.item())
-                if i % 25 == 0:
+                if i % 1 == 0:
 
                     print(f"Training loss: {np.array(losses).mean():.4f}")
                     losses = []
