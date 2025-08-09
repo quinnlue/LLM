@@ -30,7 +30,7 @@ EOS_IDX    = 1
 DEPTH      = 8            # transformer layers
 
 MINI_BATCH_PER_STEP      = 1
-MAX_TOKENS_PER_MINI_BATCH = 32_000
+MAX_TOKENS_PER_MINI_BATCH = 48_000
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
 
