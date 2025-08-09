@@ -30,13 +30,13 @@ EOS_IDX    = 1
 DEPTH      = 8            # transformer layers
 
 MINI_BATCH_PER_STEP      = 1
-MAX_TOKENS_PER_MINI_BATCH = 20_000
+MAX_TOKENS_PER_MINI_BATCH = 32_000
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
 
 EPOCHS                    = 1
-EXPECTED_OPTIM_STEPS      = 86_400
-WARMUP_STEPS              = int(EXPECTED_OPTIM_STEPS * 0.03)
+EXPECTED_OPTIM_STEPS      = 20_000
+WARMUP_STEPS              = 200
 MIN_LR, MAX_LR, FINAL_LR  = 1e-5, 5e-4, 1e-6
 CHECKPOINT_INTERVAL_SECONDS = 3_600
 
@@ -199,8 +199,9 @@ for epoch in range(EPOCHS):
         global_step += 1
 
         # ─── logging ───
-        if global_step % 50 == 0:
-            train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
+        if global_step % 1 == 0:
+            print(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
+            # train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
 
         # ─── checkpointing ───
         if time.perf_counter() - last_ckpt_time > CHECKPOINT_INTERVAL_SECONDS:
