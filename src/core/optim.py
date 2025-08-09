@@ -118,7 +118,7 @@ class Optimizer:
                 param['param'].data = xp.load(f"{path}/model/{name}.npy")
 
 class AdamW(Optimizer):
-    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-4, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-5, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
         # Fix: Pass the actual precision parameter instead of hardcoding
         super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision)
         self.weight_decay = weight_decay
@@ -205,12 +205,12 @@ class AdamW(Optimizer):
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad_data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad_data ** 2)
             
-            m_hat = m_t / max(1 - self.beta_1 ** (self.t + 2) + effective_eps, 1e-4)
-            v_hat = v_t / max(1 - self.beta_2 ** (self.t + 2) + effective_eps, 1e-4)
+            m_hat = m_t / max(1 - self.beta_1 ** (self.t + 2) + effective_eps, self.eps)
+            v_hat = v_t / max(1 - self.beta_2 ** (self.t + 2) + effective_eps, self.eps)
 
             master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
 
-            master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + effective_eps).clip(min=1e-4)
+            master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + effective_eps).clip(min=self.eps)
 
 
             param['m_t'] = m_t
