@@ -163,9 +163,9 @@ class AdamW(Optimizer):
                 dtype = self.model_dtype
 
             grad = param['param'].grad
-            
+
             if self.clip_norm is not None:
-                grad = grad.clip(min=-self.clip_norm, max=self.clip_norm)
+                grad.data = grad.data.clip(min=-self.clip_norm, max=self.clip_norm)
 
             m_t = param['m_t']
             v_t = param['v_t']
