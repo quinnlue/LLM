@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from src.core.optim import AdamW
+from src.core.optim import AdamW, Standard
 from src.preprocess.dataloader import DataLoader
 from src.tokenizer.tokenizer import tokenizer
 from src.utils.lr_scheduler import LRScheduler
@@ -84,10 +84,11 @@ model = Model(
     mini_batch_per_step=MINI_BATCH_PER_STEP,
 )
 
-optimizer = AdamW(
+optimizer = Standard(
     params=model.parameters(),
     lr=scheduler,
-    precision=(xp.float16, xp.float32)
+    # precision=(xp.float16, xp.float32),
+    clip_norm=10.0
 )
 
 model.train(optimizer, train_dl)

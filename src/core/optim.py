@@ -224,8 +224,6 @@ class AdamW(Optimizer):
 
 class Standard(Optimizer):
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
-        raise NotImplementedError("Standard optimizer not implemented")
-
         super().__init__(params, lr=lr, clip_norm=clip_norm)
         self.clip_norm = clip_norm
 
