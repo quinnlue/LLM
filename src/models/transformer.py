@@ -48,9 +48,9 @@ class Transformer(Module):
         casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -xp.inf, k=1).astype(xp.float16)
         atten_scores.data += casual_mask
 
-        # if padding_mask is not None:
-        #     # similar, avoid grads
-        #     atten_scores.data += padding_mask
+        if padding_mask is not None:
+            # similar, avoid grads
+            atten_scores.data += padding_mask
 
         atten_probs = self.softmax(atten_scores, axis=3)
         
