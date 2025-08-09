@@ -173,7 +173,10 @@ model = TransformerLM(
 
 criterion  = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer  = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), eps=1e-8)
-scheduler  = LambdaLR(optimizer, lr_schedule_lambda)
+scheduler  = LambdaLR(
+    optimizer,
+    lambda step: lr_schedule_lambda(step) / MAX_LR
+)
 
 # ────────────────────────── training loop ──────────────────────────
 global_step = 0
@@ -200,7 +203,7 @@ for epoch in range(EPOCHS):
 
         # ─── logging ───
         if global_step % 1 == 0:
-            print(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
+            print(f"step {global_step}  loss {epoch_loss[-1]:.4f}")
             # train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
 
         # ─── checkpointing ───
