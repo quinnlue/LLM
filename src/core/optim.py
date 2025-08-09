@@ -22,6 +22,20 @@ class Optimizer:
             self.model_dtype = self.master_dtype = xp.float32
             self.mixed_precision = False
 
+        if self.model_dtype == xp.float16:
+            self.model_eps = 1e-5
+        elif self.model_dtype == xp.float32 or self.model_dtype == xp.float64:
+            self.model_eps = 1e-8
+        else:
+            raise ValueError("model_dtype must be float16, float32, or float64")
+        
+        if self.master_dtype == xp.float16:
+            self.master_eps = 1e-5
+        elif self.master_dtype == xp.float32 or self.master_dtype == xp.float64:
+            self.master_eps = 1e-8
+        else:
+            raise ValueError("master_dtype must be float16, float32, or float64")
+
         
         
         # Set params -------------------------------------------------------------
@@ -46,13 +60,12 @@ class Optimizer:
         self.is_cuda = xp.__name__ == "cupy"
 
 
-    def _clip_norm(self, grad: Tensor):
+    def _clip_norm(self, grad: Tensor, total_norm: float):
         if self.clip_norm is None:
             raise ValueError("clip_norm is not set")
         
-        norm = xp.linalg.norm(grad.data)
-        if norm > self.clip_norm:
-            grad.data *= (self.clip_norm / norm)
+        if total_norm > self.clip_norm:
+            grad.data *= (self.clip_norm / total_norm)
         return grad
 
     def get_lr(self, step: int):
@@ -117,6 +130,15 @@ class Optimizer:
             else:
                 param['param'].data = xp.load(f"{path}/model/{name}.npy")
 
+
+    def _get_total_norm(self):
+        total_norm = 0.0
+        for param in self.params.values():
+            if param['param'].grad is None:
+                continue
+            total_norm += xp.linalg.norm(param['param'].grad.data) ** 2
+        return xp.sqrt(total_norm)
+
 class AdamW(Optimizer):
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-5, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
         # Fix: Pass the actual precision parameter instead of hardcoding
@@ -160,6 +182,12 @@ class AdamW(Optimizer):
 
 
     def step(self):
+        if self.clip_norm is not None:
+            total_norm = self._get_total_norm()
+        else:
+            total_norm = 1.0
+
+
         for param in self.params.values():
             if param['param'].grad is None:
                 continue
@@ -173,7 +201,7 @@ class AdamW(Optimizer):
 
             grad = param['param'].grad
 
-            grad = self._clip_norm(grad)
+            grad = self._clip_norm(grad, total_norm)
 
             m_t = param['m_t']
             v_t = param['v_t']
@@ -196,8 +224,6 @@ class AdamW(Optimizer):
                 print(f"Warning: NaN/Inf detected in gradients, skipping update")
                 continue
 
-            effective_eps = max(self.eps, 1e-5) if self.master_dtype == xp.float16 else self.eps
-
             # # Scale gradients to prevent underflow in float16
             # if self.mixed_precision and self.master_dtype == xp.float16:
             #     grad_data = grad_data * 2**8  # Scale up by 256
@@ -205,12 +231,13 @@ class AdamW(Optimizer):
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad_data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad_data ** 2)
             
-            m_hat = m_t / max(1 - self.beta_1 ** (self.t + 2) + effective_eps, self.eps)
-            v_hat = v_t / max(1 - self.beta_2 ** (self.t + 2) + effective_eps, self.eps)
+            m_hat = m_t / xp.maximum(1 - self.beta_1 ** (self.t + 1), self.master_eps)
+            v_hat = v_t / xp.maximum(1 - self.beta_2 ** (self.t + 1), self.master_eps)
 
-            master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
+            if self.weight_decay != 0.0:
+                master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
 
-            master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + effective_eps).clip(min=self.eps)
+            master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + self.master_eps).clip(min=self.master_eps)
 
 
             param['m_t'] = m_t
