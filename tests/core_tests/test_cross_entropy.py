@@ -64,6 +64,13 @@ class TestCrossEntropy(unittest.TestCase):
         loss3d = CrossEntropyWithLogits(logits3d, targets2d, use_mask=False)
         loss3d.backward()
 
+        print(f"\n=== 2D vs 3D Loss Comparison ===")
+        print(f"2D loss: {loss2d.data}")
+        print(f"3D loss: {loss3d.data}")
+        print(f"Difference: {abs(loss2d.data - loss3d.data)}")
+        print(f"2D loss shape: {loss2d.data.shape if hasattr(loss2d.data, 'shape') else 'scalar'}")
+        print(f"3D loss shape: {loss3d.data.shape if hasattr(loss3d.data, 'shape') else 'scalar'}")
+        
         self.assertTrue(np.allclose(loss2d.data, loss3d.data, atol=1e-4))
 
         grad2d_np = to_numpy(logits2d.grad.data)
@@ -77,6 +84,14 @@ class TestCrossEntropy(unittest.TestCase):
         ce = torch.nn.CrossEntropyLoss(reduction="mean")
         loss_pt = ce(logits2d_pt, targets1d_pt)
         loss_pt.backward()
+        
+        print(f"\n=== PyTorch Comparison ===")
+        print(f"Our 2D loss: {loss2d.data}")
+        print(f"PyTorch loss: {loss_pt.item()}")
+        print(f"Difference: {abs(loss2d.data - loss_pt.item())}")
+        print(f"PyTorch loss type: {type(loss_pt.item())}")
+        print(f"Our loss type: {type(loss2d.data)}")
+        
         self.assertTrue(np.allclose(loss2d.data, loss_pt.item(), atol=1e-4))
         self.assertTrue(np.allclose(grad2d_np, logits2d_pt.grad.detach().numpy(), atol=1e-4))
 
@@ -93,6 +108,16 @@ class TestCrossEntropy(unittest.TestCase):
 
         grad_np = to_numpy(logits.grad.data)
         sums = grad_np.sum(axis=-1)
+        
+        print(f"\n=== Gradient Sums Debug ===")
+        print(f"Gradient shape: {grad_np.shape}")
+        print(f"Gradient sums shape: {sums.shape}")
+        print(f"Gradient sums: {sums}")
+        print(f"Max absolute sum: {np.max(np.abs(sums))}")
+        print(f"Min absolute sum: {np.min(np.abs(sums))}")
+        print(f"Mean absolute sum: {np.mean(np.abs(sums))}")
+        print(f"All sums close to zero: {np.allclose(sums, 0.0, atol=1e-5)}")
+        
         self.assertTrue(np.allclose(sums, 0.0, atol=1e-5))
 
     def test_invalid_shapes_raise(self):
