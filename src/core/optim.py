@@ -46,6 +46,15 @@ class Optimizer:
         self.is_cuda = xp.__name__ == "cupy"
 
 
+    def _clip_norm(self, grad: Tensor):
+        if self.clip_norm is None:
+            raise ValueError("clip_norm is not set")
+        
+        norm = xp.linalg.norm(grad.data)
+        if norm > self.clip_norm:
+            grad.data = grad.data * (self.clip_norm / norm)
+        return grad
+
     def get_lr(self, step: int):
         if self.lr_scheduler is not None:
             return self.lr_scheduler(step)
@@ -164,8 +173,7 @@ class AdamW(Optimizer):
 
             grad = param['param'].grad
 
-            if self.clip_norm is not None:
-                grad.data = grad.data.clip(min=-self.clip_norm, max=self.clip_norm)
+            grad = self._clip_norm(grad)
 
             m_t = param['m_t']
             v_t = param['v_t']
