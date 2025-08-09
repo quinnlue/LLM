@@ -114,7 +114,7 @@ class TransformerLM(nn.Module):
         # bool mask : True where padding tokens
         key_padding_mask = (idx == self.pad_idx)
         causal_mask = torch.triu(torch.ones(S, S, device=idx.device), diagonal=1).bool()
-        x = self.transformer(x, src_key_padding_mask=key_padding_mask, src_mask=causal_mask)
+        x = self.transformer(x, src_key_padding_mask=key_padding_mask, mask=causal_mask)
 
         logits = self.proj(x)
         return logits
