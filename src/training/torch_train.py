@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
+import numpy as np                 # ← NEW
 
 # ────────────────────────── project deps ──────────────────────────
 from src.preprocess.dataloader import DataLoader            # yields xp-based batches
@@ -119,12 +120,22 @@ class TransformerLM(nn.Module):
 
 # ────────────────────────── helpers ──────────────────────────
 def xp_to_torch(batch_xp):
-    """Convert a Tensor (cupy/numpy backed) to torch.LongTensor on DEVICE."""
-    # batch_xp is src.core.tensor.Tensor
+    """Convert a src.core.tensor.Tensor to a torch.LongTensor (on DEVICE)
+       while restoring the integer token IDs stored in float16."""
     arr = batch_xp.data
-    if xp.__name__ == "cupy":                # cupy → cpu numpy first
+    if xp.__name__ == "cupy":          # cupy → host numpy
         arr = xp.asnumpy(arr)
-    return torch.tensor(arr, dtype=torch.long, device=DEVICE)
+
+    # 1) upgrade precision → round() guarantees exact int, then cast
+    arr_int = np.rint(arr.astype(np.float32)).astype(np.int64)
+
+    # 2) sanity-check / clamp
+    if (arr_int >= VOCAB_SIZE).any() or (arr_int < 0).any():
+        bad = arr_int[(arr_int >= VOCAB_SIZE) | (arr_int < 0)][0]
+        raise ValueError(f"Found out-of-range token id {bad} (vocab={VOCAB_SIZE})")
+        # Alternatively: arr_int = np.clip(arr_int, 0, VOCAB_SIZE-1)
+
+    return torch.tensor(arr_int, dtype=torch.long, device=DEVICE)
 
 def save_checkpoint(model, optimizer, step:int):
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
