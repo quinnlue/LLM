@@ -182,12 +182,11 @@ class AdamW(Optimizer):
                 print(f"Warning: NaN/Inf detected in gradients, skipping update")
                 continue
 
-            # Use a larger epsilon for float16 to prevent numerical issues
-            effective_eps = max(self.eps, 1e-7) if self.master_dtype == xp.float16 else self.eps
+            effective_eps = max(self.eps, 1e-5) if self.master_dtype == xp.float16 else self.eps
 
-            # Scale gradients to prevent underflow in float16
-            if self.mixed_precision and self.master_dtype == xp.float16:
-                grad_data = grad_data * 2**8  # Scale up by 256
+            # # Scale gradients to prevent underflow in float16
+            # if self.mixed_precision and self.master_dtype == xp.float16:
+            #     grad_data = grad_data * 2**8  # Scale up by 256
 
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad_data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad_data ** 2)
