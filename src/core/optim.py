@@ -115,6 +115,7 @@ class AdamW(Optimizer):
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
+        self.clip_norm = clip_norm
         self.eps = eps
 
         for name, param in self.params.items():
@@ -162,6 +163,10 @@ class AdamW(Optimizer):
                 dtype = self.model_dtype
 
             grad = param['param'].grad
+            
+            if self.clip_norm is not None:
+                grad = grad.clip(min=-self.clip_norm, max=self.clip_norm)
+
             m_t = param['m_t']
             v_t = param['v_t']
 
@@ -175,6 +180,7 @@ class AdamW(Optimizer):
                 v_t = self.reduce_like(v_t, master_param_tensor.data.shape)
 
             grad_data = grad.data.astype(dtype)
+
             del grad
 
             # Add numerical stability checks for mixed precision

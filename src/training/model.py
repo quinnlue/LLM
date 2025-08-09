@@ -88,15 +88,7 @@ class Model(Module):
             loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
             losses.append(loss.data)
         return xp.mean(xp.array(losses))
-
-    def _gc(self):
-        gc.collect()
-        # if self.is_cuda:
-        #     xp.get_default_memory_pool().free_all_blocks()
-        #     xp.get_default_pinned_memory_pool().free_all_blocks()
-            # xp._default_memory_pool = xp._memory.MemoryPool()
-            # xp._default_pinned_memory_pool = xp._memory.PinnedMemoryPool()
-
+    
     def checkpoint(self, optimizer: Optimizer):
         # val_loss = self.evaluate()
         # val_logger.info(f"Validation loss: {val_loss}")
@@ -118,7 +110,6 @@ class Model(Module):
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
-                self._gc()
 
                 if (i + 1) % 1 == 0:
                     train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean()}")
@@ -127,7 +118,6 @@ class Model(Module):
                 if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
                     self.checkpoint(optimizer)
                     last_cp_time = time.perf_counter()
-                    self._gc()
 
 
 
