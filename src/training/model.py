@@ -120,7 +120,7 @@ class Model(Module):
                 optimizer.zero_grad()
                 self._gc()
 
-                if (i + 1) % 25 == 0:
+                if (i + 1) % 1 == 0:
                     train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean() * self.mini_batch_per_step}")
 
                 # checkpointing & validation
