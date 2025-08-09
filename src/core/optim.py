@@ -52,7 +52,7 @@ class Optimizer:
         
         norm = xp.linalg.norm(grad.data)
         if norm > self.clip_norm:
-            grad.data = grad.data * (self.clip_norm / norm)
+            grad.data *= (self.clip_norm / norm)
         return grad
 
     def get_lr(self, step: int):
@@ -224,6 +224,7 @@ class AdamW(Optimizer):
 
 class Standard(Optimizer):
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
+        raise NotImplementedError("Standard optimizer not implemented")
         super().__init__(params, lr=lr, clip_norm=clip_norm)
         self.clip_norm = clip_norm
 

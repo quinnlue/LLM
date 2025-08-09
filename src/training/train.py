@@ -19,12 +19,12 @@ CHECKPOINT_DIR = r"checkpoints"
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab()) # 21680
-D_MODEL = 768
-N_HEADS = 12
+D_MODEL = 512
+N_HEADS = 8
 MAX_SEQ_LEN = 548
 PAD_IDX = 0
 EOS_IDX = 1
-DEPTH = 8
+DEPTH = 4
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 1
@@ -84,10 +84,10 @@ model = Model(
     mini_batch_per_step=MINI_BATCH_PER_STEP,
 )
 
-optimizer = Standard(
+optimizer = AdamW(
     params=model.parameters(),
     lr=scheduler,
-    # precision=(xp.float16, xp.float32),
+    precision=(xp.float16, xp.float32),
     clip_norm=1.0
 )
 
