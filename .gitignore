@@ -268,7 +268,7 @@ local_settings.py
 settings_local.py 
 
 # Checkpoints
-checkpoints/
+#checkpoints/
 
 
 # .vscode
