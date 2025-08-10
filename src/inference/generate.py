@@ -14,6 +14,7 @@ python -m src.inference.generate \
 
 import argparse
 import os
+import sys
 import torch
 
 # ─── project deps ──────────────────────────────────────────────────────────────
@@ -110,4 +111,36 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # If the user supplied CLI args, run the normal path; otherwise fall back to a quick demo.
+    if len(sys.argv) > 1:
+        main()
+    else:
+        # ─── Quick demo ─────────────────────────────────────────────────────────
+        ckpt_dir = "checkpoints"
+        ckpt_files = [f for f in os.listdir(ckpt_dir) if f.endswith(".pt")]
+        if not ckpt_files:
+            raise FileNotFoundError(
+                "No '.pt' files found in 'checkpoints/'.  "
+                "Either train the model first or pass --checkpoint <path>."
+            )
+
+        # Pick the most recently modified checkpoint
+        latest_ckpt = max(
+            ckpt_files,
+            key=lambda f: os.path.getctime(os.path.join(ckpt_dir, f)),
+        )
+        ckpt_path = os.path.join(ckpt_dir, latest_ckpt)
+
+        print(f"[demo] Using checkpoint → {ckpt_path}")
+        model = load_model(ckpt_path)
+
+        demo_prompt = "The best way to guard"
+        print(f"[demo] Prompt: {demo_prompt!r}")
+        completion = generate(
+            model,
+            demo_prompt,
+            max_new_tokens=64,
+            temperature=0.8,
+            top_k=40,
+        )
+        print("[demo] Completion:\n" + completion)
