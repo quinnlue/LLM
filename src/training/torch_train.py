@@ -148,80 +148,86 @@ def save_checkpoint(model, optimizer, step:int):
     }, os.path.join(CHECKPOINT_DIR, ckpt_name))
     train_logger.info(f"Saved checkpoint → {ckpt_name}")
 
-# ────────────────────────── data loaders (reuse existing parquet loader) ──────────────────────────
-train_dl = DataLoader(
-    path=TRAIN_DIR,
-    x_column=DATA_COLUMN,
-    is_binned=True,
-    bin_column=BIN_COLUMN,
-    max_tokens=MAX_TOKENS_PER_MINI_BATCH)
+# ────────────────────────── data-loading & training  ──────────────────────────
+# Put everything below inside a guard so imports are side-effect free.
+if __name__ == "__main__":
+    # ─── data loaders ───
+    train_dl = DataLoader(
+        path=TRAIN_DIR,
+        x_column=DATA_COLUMN,
+        is_binned=True,
+        bin_column=BIN_COLUMN,
+        max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+    )
 
-val_dl = DataLoader(
-    path=VAL_DIR,
-    x_column=DATA_COLUMN,
-    is_binned=True,
-    bin_column=BIN_COLUMN,
-    max_tokens=MAX_TOKENS_PER_MINI_BATCH)
+    val_dl = DataLoader(
+        path=VAL_DIR,
+        x_column=DATA_COLUMN,
+        is_binned=True,
+        bin_column=BIN_COLUMN,
+        max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+    )
 
-# ────────────────────────── build model / optim / sched ──────────────────────────
-model = TransformerLM(
-    vocab_size=VOCAB_SIZE,
-    d_model=D_MODEL,
-    n_heads=N_HEADS,
-    depth=DEPTH,
-    max_seq_len=MAX_SEQ_LEN,
-    pad_idx=PAD_IDX).to(DEVICE)
+    # ─── model / optim / sched ───
+    model = TransformerLM(
+        vocab_size=VOCAB_SIZE,
+        d_model=D_MODEL,
+        n_heads=N_HEADS,
+        depth=DEPTH,
+        max_seq_len=MAX_SEQ_LEN,
+        pad_idx=PAD_IDX,
+    ).to(DEVICE)
 
-criterion  = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-optimizer  = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), eps=1e-8)
-scheduler  = LambdaLR(
-    optimizer,
-    lambda step: lr_schedule_lambda(step) / MAX_LR
-)
+    criterion  = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    optimizer  = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), eps=1e-8)
+    scheduler  = LambdaLR(
+        optimizer,
+        lambda step: lr_schedule_lambda(step) / MAX_LR,
+    )
 
-# ────────────────────────── training loop ──────────────────────────
-global_step = 0
-last_ckpt_time = time.perf_counter()
+    # ─── training loop ───
+    global_step   = 0
+    last_ckpt_time = time.perf_counter()
 
-for epoch in range(EPOCHS):
-    epoch_loss = []
-    for batch in tqdm(train_dl, desc=f"Epoch {epoch}"):
-        batch_t = xp_to_torch(batch)               # (B, S)
-        inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
+    for epoch in range(EPOCHS):
+        epoch_loss = []
+        for batch in tqdm(train_dl, desc=f"Epoch {epoch}"):
+            batch_t = xp_to_torch(batch)               # (B, S)
+            inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
 
-        logits = model(inp)                        # (B, S-1, V)
-        loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
-        loss = loss / MINI_BATCH_PER_STEP          # gradient accumulation if >1
-        loss.backward()
+            logits = model(inp)                        # (B, S-1, V)
+            loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
+            loss = loss / MINI_BATCH_PER_STEP          # gradient accumulation if >1
+            loss.backward()
 
-        if (global_step + 1) % MINI_BATCH_PER_STEP == 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step(); optimizer.zero_grad()
-            scheduler.step()
+            if (global_step + 1) % MINI_BATCH_PER_STEP == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step(); optimizer.zero_grad()
+                scheduler.step()
 
-        epoch_loss.append(loss.item() * MINI_BATCH_PER_STEP)
-        global_step += 1
+            epoch_loss.append(loss.item() * MINI_BATCH_PER_STEP)
+            global_step += 1
 
-        # ─── logging ───
-        if global_step % 25 == 0:
-            print(f"step {global_step}  loss {sum(epoch_loss[-25:])/25:.4f}")
-            # train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
+            # ─── logging ───
+            if global_step % 25 == 0:
+                print(f"step {global_step}  loss {sum(epoch_loss[-25:])/25:.4f}")
+                # train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
 
-        # ─── checkpointing ───
-        if time.perf_counter() - last_ckpt_time > CHECKPOINT_INTERVAL_SECONDS:
-            save_checkpoint(model, optimizer, global_step)
-            last_ckpt_time = time.perf_counter()
+            # ─── checkpointing ───
+            if time.perf_counter() - last_ckpt_time > CHECKPOINT_INTERVAL_SECONDS:
+                save_checkpoint(model, optimizer, global_step)
+                last_ckpt_time = time.perf_counter()
 
-    train_logger.info(f"Epoch {epoch} avg loss: {sum(epoch_loss)/len(epoch_loss):.4f}")
+        train_logger.info(f"Epoch {epoch} avg loss: {sum(epoch_loss)/len(epoch_loss):.4f}")
 
-    # ─── quick validation ───
-    model.eval()
-    with torch.no_grad():
-        val_losses = []
-        for vbatch in tqdm(val_dl, desc="valid"):
-            vb = xp_to_torch(vbatch)
-            logits = model(vb[:, :-1])
-            vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
-            val_losses.append(vl.item())
-    val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
-    model.train()
+        # ─── quick validation ───
+        model.eval()
+        with torch.no_grad():
+            val_losses = []
+            for vbatch in tqdm(val_dl, desc="valid"):
+                vb = xp_to_torch(vbatch)
+                logits = model(vb[:, :-1])
+                vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
+                val_losses.append(vl.item())
+        val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
+        model.train()
