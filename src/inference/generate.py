@@ -20,12 +20,12 @@ import torch
 # ─── project deps ──────────────────────────────────────────────────────────────
 from src.training.torch_train import (
     TransformerLM, VOCAB_SIZE, D_MODEL, N_HEADS,
-    DEPTH, MAX_SEQ_LEN, PAD_IDX, EOS_IDX, DEVICE,
+    DEPTH, MAX_SEQ_LEN, PAD_IDX, EOS_IDX, DEVICE as _TRAIN_DEVICE,  # renamed
 )
 from src.tokenizer.tokenizer import tokenizer
 
 # ────────────────────────── helpers ────────────────────────────────────────────
-def load_model(ckpt_path: str) -> TransformerLM:
+def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
     """Instantiate the model and load weights from *ckpt_path*."""
     if not os.path.isfile(ckpt_path):
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
@@ -37,9 +37,9 @@ def load_model(ckpt_path: str) -> TransformerLM:
         depth=DEPTH,
         max_seq_len=MAX_SEQ_LEN,
         pad_idx=PAD_IDX,
-    ).to(DEVICE)
+    ).to(device)
 
-    ckpt = torch.load(ckpt_path, map_location=DEVICE)
+    ckpt = torch.load(ckpt_path, map_location=device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
     return model
@@ -49,6 +49,7 @@ def load_model(ckpt_path: str) -> TransformerLM:
 def generate(
     model: TransformerLM,
     prompt: str,
+    device: torch.device,
     max_new_tokens: int = 100,
     temperature: float = 1.0,
     top_k: int | None = None,
@@ -63,7 +64,7 @@ def generate(
     """
     # Tokenise prompt → (1, S)
     prompt_ids = tokenizer.encode(prompt).ids[: MAX_SEQ_LEN - 1]
-    ids = torch.tensor(prompt_ids, dtype=torch.long, device=DEVICE).unsqueeze(0)
+    ids = torch.tensor(prompt_ids, dtype=torch.long, device=device).unsqueeze(0)
 
     for _ in range(max_new_tokens):
         if ids.shape[1] >= MAX_SEQ_LEN:
@@ -97,16 +98,48 @@ def main() -> None:
     parser.add_argument("--max_new_tokens", type=int, default=100)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=None)
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cuda", "cpu"],
+        default="auto",
+        help="Where to run inference (default: auto)",
+    )
     args = parser.parse_args()
 
-    model = load_model(args.checkpoint)
-    out_text = generate(
-        model,
-        prompt=args.prompt,
-        max_new_tokens=args.max_new_tokens,
-        temperature=args.temperature,
-        top_k=args.top_k,
-    )
+    # ─── Select device ────────────────────────────────────────────────────────
+    if args.device == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif args.device == "cuda":
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    model = load_model(args.checkpoint, device=device)
+    try:
+        out_text = generate(
+            model,
+            prompt=args.prompt,
+            device=device,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+        )
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() and device.type == "cuda":
+            print("[warning] CUDA OOM → retrying on CPU …")
+            torch.cuda.empty_cache()
+            device = torch.device("cpu")
+            model = load_model(args.checkpoint, device=device)
+            out_text = generate(
+                model,
+                prompt=args.prompt,
+                device=device,
+                max_new_tokens=args.max_new_tokens,
+                temperature=args.temperature,
+                top_k=args.top_k,
+            )
+        else:
+            raise
     print(out_text)
 
 
@@ -132,13 +165,16 @@ if __name__ == "__main__":
         ckpt_path = os.path.join(ckpt_dir, latest_ckpt)
 
         print(f"[demo] Using checkpoint → {ckpt_path}")
-        model = load_model(ckpt_path)
+        # ─── Demo section ─────────────────────────────────────────────────────────────
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = load_model(ckpt_path, device=device)
 
         demo_prompt = "The best way to guard"
         print(f"[demo] Prompt: {demo_prompt!r}")
         completion = generate(
             model,
             demo_prompt,
+            device=device,
             max_new_tokens=64,
             temperature=0.8,
             top_k=40,
