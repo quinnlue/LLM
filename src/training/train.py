@@ -52,21 +52,21 @@ scheduler = LRScheduler(
     )
 
 
-train_dl = DataLoader(
-    src_dir=TRAIN_DIR,
-    src_column=DATA_COLUMN,
-    batch_size=BATCH_SIZE,
-    shuffle_rows=True,
-    shuffle_files=True,
-)
+# train_dl = DataLoader(
+#     src_dir=TRAIN_DIR,
+#     src_column=DATA_COLUMN,
+#     batch_size=BATCH_SIZE,
+#     shuffle_rows=True,
+#     shuffle_files=True,
+# )
 
-val_dl = DataLoader(
-    src_dir=VAL_DIR,
-    src_column=DATA_COLUMN,
-    batch_size=BATCH_SIZE,
-    shuffle_rows=True,
-    shuffle_files=True,
-)
+# val_dl = DataLoader(
+#     src_dir=VAL_DIR,
+#     src_column=DATA_COLUMN,
+#     batch_size=BATCH_SIZE,
+#     shuffle_rows=True,
+#     shuffle_files=True,
+# )
 
 model = Model(
     vocab_size=VOCAB_SIZE,
@@ -92,4 +92,4 @@ optimizer = AdamW(
     clip_norm=1.0
 )
 
-model.train(optimizer, train_dl)
+model.train(optimizer, None)
