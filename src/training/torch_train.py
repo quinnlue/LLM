@@ -32,7 +32,7 @@ DEPTH      = 12            # transformer layers
 
 
 BATCH_SIZE = 60
-MINI_BATCH_PER_STEP = 12
+MINI_BATCH_PER_STEP = 8
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
 
