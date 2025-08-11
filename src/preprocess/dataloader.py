@@ -28,6 +28,14 @@ class Dataset:
         for i in range(0, len(self.src), self.batch_size):
             yield self.x[i:i+self.batch_size]
 
+    def save_first_batch(self, output_path: str):
+        """Save the first batch as a numpy file"""
+        first_batch = self.x[:self.batch_size]
+        np.save(output_path, first_batch)
+        print(f"First batch saved to {output_path}")
+        print(f"Batch shape: {first_batch.shape}")
+        return first_batch
+
 
 class DataLoader:
     def __init__(self, src_dir, src_column, batch_size, shuffle_rows: bool = True, shuffle_files: bool = True):
@@ -38,6 +46,8 @@ class DataLoader:
             random.shuffle(self.files)
 
         self.src_column = src_column
+        self.save_first_batch("first_batch.npy")
+        exit()
 
     def __len__(self):
         return len(self.files)
@@ -47,3 +57,15 @@ class DataLoader:
             dataset = Dataset(f, self.src_column, self.batch_size, self.shuffle_rows)
             for batch in dataset:
                 yield batch
+
+    def save_first_batch(self, output_path: str):
+        """Save the first batch from the first file as a numpy file"""
+        if not self.files:
+            raise ValueError("No parquet files found in the directory")
+        
+        first_file = self.files[0]
+        dataset = Dataset(first_file, self.src_column, self.batch_size, self.shuffle_rows)
+        return dataset.save_first_batch(output_path)
+
+
+
