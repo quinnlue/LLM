@@ -10,6 +10,7 @@ pin_memory = is_cuda
 
 class Dataset:
     def __init__(self, path, src, batch_size, shuffle_rows: bool = True):
+        print("Loading dataset from " , path)
         df = pd.read_parquet(path)
 
         if shuffle_rows:
