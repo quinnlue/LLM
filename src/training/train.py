@@ -28,7 +28,7 @@ DEPTH = 4
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 1
-MAX_TOKENS_PER_MINI_BATCH = 10000
+BATCH_SIZE = 16
 DATA_COLUMN = "seq"
 BIN_COLUMN = "bin"
 
@@ -53,19 +53,19 @@ scheduler = LRScheduler(
 
 
 train_dl = DataLoader(
-    path=TRAIN_DIR,
-    x_column=DATA_COLUMN,
-    is_binned=True,
-    bin_column=BIN_COLUMN,
-    max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+    src_dir=TRAIN_DIR,
+    src_column=DATA_COLUMN,
+    batch_size=BATCH_SIZE,
+    shuffle_rows=True,
+    shuffle_files=True,
 )
 
 val_dl = DataLoader(
-    path=VAL_DIR,
-    x_column=DATA_COLUMN,
-    is_binned=True,
-    bin_column=BIN_COLUMN,
-    max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+    src_dir=VAL_DIR,
+    src_column=DATA_COLUMN,
+    batch_size=BATCH_SIZE,
+    shuffle_rows=True,
+    shuffle_files=True,
 )
 
 model = Model(
@@ -74,7 +74,6 @@ model = Model(
     max_seq_len=MAX_SEQ_LEN,
     pad_idx=PAD_IDX,
     n_heads=N_HEADS,
-    max_tokens_per_mini_batch=MAX_TOKENS_PER_MINI_BATCH,
     transformer_depth=DEPTH,
     checkpoint_interval_seconds=CHECKPOINT_INTERVAL_SECONDS,
     train_dir=TRAIN_DIR,
@@ -89,7 +88,7 @@ model._build((1, MAX_SEQ_LEN))
 optimizer = AdamW(
     params=model.parameters(),
     lr=scheduler,
-    precision=(xp.float32, xp.float32),
+    precision=(xp.float16, xp.float32),
     clip_norm=1.0
 )
 
