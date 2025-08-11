@@ -8,7 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
-import numpy as np                 # ← NEW
+import numpy as np
+from torch.cuda.amp import autocast, GradScaler
 
 # ────────────────────────── project deps ──────────────────────────
 from src.preprocess.dataloader import DataLoader            # yields xp-based batches
@@ -21,16 +22,16 @@ TRAIN_DIR  = r"data/train"
 VAL_DIR    = r"data/validation"
 CHECKPOINT_DIR = r"checkpoints"
 
-VOCAB_SIZE = len(tokenizer.get_vocab()) + 64   # 21680 in your data
+VOCAB_SIZE = len(tokenizer.get_vocab())   # 21680 in your data
 D_MODEL    = 768
 N_HEADS    = 12
-MAX_SEQ_LEN = 548
+MAX_SEQ_LEN = 512
 PAD_IDX    = 0
 EOS_IDX    = 1
-DEPTH      = 8            # transformer layers
+DEPTH      = 12            # transformer layers
 
-MINI_BATCH_PER_STEP      = 1
-MAX_TOKENS_PER_MINI_BATCH = 48_000
+MINI_BATCH_PER_STEP      = 16
+MAX_TOKENS_PER_MINI_BATCH = 8000
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
 
@@ -153,19 +154,19 @@ def save_checkpoint(model, optimizer, step:int):
 if __name__ == "__main__":
     # ─── data loaders ───
     train_dl = DataLoader(
-        path=TRAIN_DIR,
-        x_column=DATA_COLUMN,
-        is_binned=True,
-        bin_column=BIN_COLUMN,
-        max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+        src_dir=TRAIN_DIR,
+        src_column=DATA_COLUMN,
+        batch_size=MINI_BATCH_PER_STEP,
+        shuffle_rows=True,
+        shuffle_files=True,
     )
 
     val_dl = DataLoader(
-        path=VAL_DIR,
-        x_column=DATA_COLUMN,
-        is_binned=True,
-        bin_column=BIN_COLUMN,
-        max_tokens=MAX_TOKENS_PER_MINI_BATCH,
+        src_dir=VAL_DIR,
+        src_column=DATA_COLUMN,
+        batch_size=MINI_BATCH_PER_STEP,
+        shuffle_rows=True,
+        shuffle_files=True,
     )
 
     # ─── model / optim / sched ───
@@ -184,6 +185,9 @@ if __name__ == "__main__":
         optimizer,
         lambda step: lr_schedule_lambda(step) / MAX_LR,
     )
+    # ─── AMP setup ───
+    use_amp = DEVICE.type == "cuda"
+    scaler = GradScaler(enabled=use_amp)
 
     # ─── training loop ───
     global_step   = 0
@@ -195,14 +199,19 @@ if __name__ == "__main__":
             batch_t = xp_to_torch(batch)               # (B, S)
             inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
 
-            logits = model(inp)                        # (B, S-1, V)
-            loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
-            loss = loss / MINI_BATCH_PER_STEP          # gradient accumulation if >1
-            loss.backward()
+            with autocast(enabled=use_amp):
+                logits = model(inp)                    # (B, S-1, V)
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
+                loss = loss / MINI_BATCH_PER_STEP      # gradient accumulation if >1
+
+            scaler.scale(loss).backward()
 
             if (global_step + 1) % MINI_BATCH_PER_STEP == 0:
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                optimizer.step(); optimizer.zero_grad()
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
                 scheduler.step()
 
             epoch_loss.append(loss.item() * MINI_BATCH_PER_STEP)
@@ -226,8 +235,9 @@ if __name__ == "__main__":
             val_losses = []
             for vbatch in tqdm(val_dl, desc="valid"):
                 vb = xp_to_torch(vbatch)
-                logits = model(vb[:, :-1])
-                vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
+                with autocast(enabled=use_amp):
+                    logits = model(vb[:, :-1])
+                    vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
                 val_losses.append(vl.item())
         val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
         model.train()

@@ -1,8 +1,8 @@
 from src.utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5):
-        self.data = xp.array(data).astype(xp.float16)
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float16):
+        self.data = xp.array(data).astype(dtype)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
