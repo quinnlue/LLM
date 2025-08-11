@@ -22,19 +22,27 @@ class Optimizer:
             self.model_dtype = self.master_dtype = xp.float32
             self.mixed_precision = False
 
-        if self.model_dtype == xp.float16:
-            self.model_eps = 1e-5
-        elif self.model_dtype == xp.float32 or self.model_dtype == xp.float64:
-            self.model_eps = 1e-8
-        else:
-            raise ValueError("model_dtype must be float16, float32, or float64")
+        # if self.model_dtype == xp.float16:
+        #     self.model_eps = 1e-5
+        # elif self.model_dtype == xp.float32 or self.model_dtype == xp.float64:
+        #     self.model_eps = 1e-8
+        # else:
+        #     raise ValueError("model_dtype must be float16, float32, or float64")
         
-        if self.master_dtype == xp.float16:
-            self.master_eps = 1e-5
-        elif self.master_dtype == xp.float32 or self.master_dtype == xp.float64:
-            self.master_eps = 1e-8
-        else:
-            raise ValueError("master_dtype must be float16, float32, or float64")
+        # if self.master_dtype == xp.float16:
+        #     self.master_eps = 1e-5
+        # elif self.master_dtype == xp.float32 or self.master_dtype == xp.float64:
+        #     self.master_eps = 1e-8
+        # else:
+        #     raise ValueError("master_dtype must be float16, float32, or float64")
+
+        # TODO: remove hard coded eps
+        self.master_eps = 1e-8
+        self.model_eps = 1e-8
+
+        # TODO: remove hard coded dtype
+        self.master_dtype = xp.float32
+        self.model_dtype = xp.float32
 
         
         
@@ -140,14 +148,13 @@ class Optimizer:
         return xp.sqrt(total_norm)
 
 class AdamW(Optimizer):
-    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.95, eps=1e-5, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.95, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
         # Fix: Pass the actual precision parameter instead of hardcoding
         super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision)
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.clip_norm = clip_norm
-        self.eps = eps
 
         for name, param in self.params.items():
             # Create momentum and variance tensors with the correct dtype and shape

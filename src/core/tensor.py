@@ -1,8 +1,9 @@
 from src.utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float16):
-        self.data = xp.array(data).astype(dtype)
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
+        # TODO: remove force to float32
+        self.data = xp.array(data).astype(xp.float32)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None
@@ -10,7 +11,8 @@ class Tensor:
         self.requires_mask = requires_mask
         self.mask = None
         self.name = name
-        self.eps = eps
+        # TODO: remove hard coded eps
+        self.eps = 1e-8
 
         self.is_cuda = xp.__name__ == "cupy"
 
@@ -460,12 +462,6 @@ class Tensor:
             out.grad_fn = grad_fn
 
         return out
-
-    def update(self, lr: float):
-        if self.name is not None:
-            print(self.name)
-        self.data -= lr * self.grad
-
 
     def backward(self, grad=None, _visited=None):
         if not self.requires_grad:
