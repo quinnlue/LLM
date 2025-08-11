@@ -16,9 +16,7 @@ import pandas as pd
 import numpy as np
 
 
-NUM_HEADS = 4
-# src = np.random.randint(low=0, high=16, size=(15, 15))
-src = np.load("src/training/first_batch.npy")
+src = np.load("src/training/first_batch.npy") # this is of shape (16, 512)
 x = src[:, :-1]
 y = src[:, 1:]
 
@@ -29,6 +27,23 @@ y = src[:, 1:]
 class Net(Module):
     def __init__(self, d_model, n_heads, vocab_size, max_seq_len):
         super().__init__()
+        # Store for debugging expectations
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.vocab_size = vocab_size
+        self.max_seq_len = max_seq_len
+
+        # Shape-check utility that raises on mismatch
+        def _check_shape(name, actual, expected):
+            def _shape_of(obj):
+                try:
+                    return tuple(obj.shape)
+                except Exception:
+                    return None
+            actual_shape = _shape_of(actual)
+            if expected is not None and actual_shape != expected:
+                raise ValueError(f"Shape mismatch for {name}: expected {expected}, got {actual_shape}")
+        self._check_shape = _check_shape
 
         self.e = self.embedding(vocab_size, d_model, max_seq_len, name="Embedding")
 
@@ -43,29 +58,113 @@ class Net(Module):
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
+        # Input token indices
+        B, T = idx.shape if hasattr(idx, "shape") else (None, None)
+        self._check_shape("input idx", idx, expected=(B, T))
+
+        # Embedding + positional encoding
         x = self.e.get_sentence_embedding(idx)
+        self._check_shape("embedding output", x, expected=(B, T, self.d_model))
+
+        # Transformer blocks (residual-preserving shape)
         x = self.head1(x)
+        self._check_shape("head1 output", x, expected=(B, T, self.d_model))
         x = self.head2(x)
+        self._check_shape("head2 output", x, expected=(B, T, self.d_model))
         x = self.head3(x)
+        self._check_shape("head3 output", x, expected=(B, T, self.d_model))
         x = self.head4(x)
+        self._check_shape("head4 output", x, expected=(B, T, self.d_model))
         x = self.head5(x)
+        self._check_shape("head5 output", x, expected=(B, T, self.d_model))
         x = self.head6(x)
+        self._check_shape("head6 output", x, expected=(B, T, self.d_model))
         x = self.head7(x)
+        self._check_shape("head7 output", x, expected=(B, T, self.d_model))
         x = self.head8(x)
+        self._check_shape("head8 output", x, expected=(B, T, self.d_model))
+
+        # Final projection to vocabulary logits
         x = self.project(x)
+        self._check_shape("project logits", x, expected=(B, T, self.vocab_size))
         return x
 
     def train(self, x, y, epochs, optimizer):
         for epoch in range(epochs):
+            # Inputs to training step
+            B, T = x.shape if hasattr(x, "shape") else (None, None)
+            self._check_shape("train/x (token ids)", x, expected=(B, T))
+            self._check_shape("train/y (next token ids)", y, expected=(B, T))
+
             y_hat = self.forward(x)
-            # print(y_hat.shape, y.shape)
+
+            # Expect logits for each position and vocab
+            self._check_shape("y_hat (logits)", y_hat, expected=(B, T, self.vocab_size))
+            self._check_shape("y (targets)", y, expected=(B, T))
+
+            # Loss expects axis=-1 over vocab
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
+            # scalar loss expected; if Tensor, its shape should be ()
+            try:
+                self._check_shape("loss tensor", loss, expected=())
+            except Exception:
+                pass
     
             loss.backward()
+
+            # Snapshot params pre-step to compute update tensors post-step
+            _pre_step = {}
+
+            # Backprop debug: print parameter and update (grad) shapes before optimizer applies updates
+            try:
+                for pname, p in self.parameters().items():
+                    g = p.grad
+                    if g is None:
+                        continue
+                    try:
+                        _pre_step[pname] = p.data.copy()
+                    except Exception:
+                        _pre_step[pname] = None
+                    p_shape = tuple(p.shape) if hasattr(p, "shape") else None
+                    g_shape = tuple(g.shape) if hasattr(g, "shape") else None
+                    g_has_nan = False
+                    g_has_inf = False
+                    try:
+                        g_has_nan = bool((g.data != g.data).any())  # NaN check without xp.isnan for portability
+                        # Inf check: compare against large finite bound
+                        from src.utils.backend import xp as _xp
+                        g_has_inf = bool((_xp.isinf(g.data)).any())
+                    except Exception:
+                        pass
+                    mismatch_note = " [MISMATCH]" if (p_shape is not None and g_shape is not None and p_shape != g_shape) else ""
+                    print(f"[BACKPROP] update -> {pname}: param{p_shape}, grad{g_shape}{mismatch_note}" + (" [NaN]" if g_has_nan else "") + (" [Inf]" if g_has_inf else ""))
+            except Exception as _dbg_ex:
+                print(f"[BACKPROP] debug print failed: {_dbg_ex}")
+
             optimizer.step()
+
+            # Post-step: compute and report actual applied update shapes
+            try:
+                from src.utils.backend import xp as _xp
+                for pname, p in self.parameters().items():
+                    old = _pre_step.get(pname, None)
+                    if old is None:
+                        continue
+                    try:
+                        upd = p.data - old
+                        u_shape = tuple(upd.shape)
+                        p_shape = tuple(p.shape) if hasattr(p, "shape") else None
+                        mismatch_note = " [MISMATCH]" if (p_shape is not None and u_shape is not None and p_shape != u_shape) else ""
+                        u_has_nan = bool((_xp.isnan(upd)).any()) if hasattr(_xp, 'isnan') else bool((upd != upd).any())
+                        u_has_inf = bool((_xp.isinf(upd)).any()) if hasattr(_xp, 'isinf') else False
+                        print(f"[UPDATE ] applied -> {pname}: param{p_shape}, update{u_shape}{mismatch_note}" + (" [NaN]" if u_has_nan else "") + (" [Inf]" if u_has_inf else ""))
+                    except Exception as _upd_ex:
+                        print(f"[UPDATE ] failed to compute update for {pname}: {_upd_ex}")
+            except Exception as _post_ex:
+                print(f"[UPDATE ] post-step debug failed: {_post_ex}")
             optimizer.zero_grad()
             if epoch % 1 == 0:
-                print(f"Epoch {epoch}, Loss: {loss.data}")
+                print(f"Loss: {loss.data}")
                 
 if __name__ == "__main__":
     D_MODEL = 768
