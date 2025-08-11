@@ -62,7 +62,7 @@ class Net(Module):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            if epoch % 10 == 0:
+            if epoch % 1 == 0:
                 print(f"Epoch {epoch}, Loss: {loss.data}")
                 
 if __name__ == "__main__":
