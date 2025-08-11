@@ -84,6 +84,9 @@ model = Model(
 )
 
 model._build((1, MAX_SEQ_LEN))
+print(model)
+
+exit()
 
 optimizer = AdamW(
     params=model.parameters(),
