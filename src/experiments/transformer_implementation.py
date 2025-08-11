@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
     model._build((15, 15))
-    optimizer = AdamW(model.parameters(), lr=0.0001, precision=(xp.float16, xp.float32), clip_norm=1.0)
+    optimizer = AdamW(model.parameters(), lr=3e-5, precision=(xp.float16, xp.float32), clip_norm=1.0)
 
 
     model.train(x, y, epochs=1000, optimizer=optimizer)
