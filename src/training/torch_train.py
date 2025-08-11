@@ -30,8 +30,9 @@ PAD_IDX    = 0
 EOS_IDX    = 1
 DEPTH      = 12            # transformer layers
 
-MINI_BATCH_PER_STEP      = 16
-MAX_TOKENS_PER_MINI_BATCH = 64000
+
+BATCH_SIZE = 48
+MINI_BATCH_PER_STEP = 12
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
 
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     train_dl = DataLoader(
         src_dir=TRAIN_DIR,
         src_column=DATA_COLUMN,
-        batch_size=MINI_BATCH_PER_STEP,
+        batch_size=BATCH_SIZE,
         shuffle_rows=True,
         shuffle_files=True,
     )
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     val_dl = DataLoader(
         src_dir=VAL_DIR,
         src_column=DATA_COLUMN,
-        batch_size=MINI_BATCH_PER_STEP,
+        batch_size=BATCH_SIZE,
         shuffle_rows=True,
         shuffle_files=True,
     )
