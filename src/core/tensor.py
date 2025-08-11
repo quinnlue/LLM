@@ -242,9 +242,27 @@ class Tensor:
         out = Tensor(xp.multiply(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad)
         if out.requires_grad:
             out.parents = (self, other)
+
+            def _reduce_broadcast(grad_arr, target_shape):
+                if grad_arr.shape == target_shape:
+                    return grad_arr
+                ndim_diff = grad_arr.ndim - len(target_shape)
+                target_ext = (1,) * ndim_diff + target_shape
+                axes = tuple(i for i, (g_dim, t_dim) in enumerate(zip(grad_arr.shape, target_ext)) if t_dim == 1)
+                if axes:
+                    grad_arr = grad_arr.sum(axis=axes, keepdims=True)
+                return grad_arr.reshape(target_shape)
+
             def grad_fn(grad):
                 grad.requires_grad = False
-                return (grad * other, grad * self)
+                g_self = grad.data * other.data
+                g_self = _reduce_broadcast(g_self, self.data.shape)
+
+                g_other = grad.data * self.data
+                g_other = _reduce_broadcast(g_other, other.data.shape)
+
+                return (Tensor(g_self, requires_grad=False),
+                        Tensor(g_other, requires_grad=False))
             out.grad_fn = grad_fn
         return out
     
@@ -267,12 +285,31 @@ class Tensor:
         out = Tensor(xp.divide(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad)
         if out.requires_grad:
             out.parents = (self, other)
+
+            def _reduce_broadcast(grad_arr, target_shape):
+                if grad_arr.shape == target_shape:
+                    return grad_arr
+                ndim_diff = grad_arr.ndim - len(target_shape)
+                target_ext = (1,) * ndim_diff + target_shape
+                axes = tuple(i for i, (g_dim, t_dim) in enumerate(zip(grad_arr.shape, target_ext)) if t_dim == 1)
+                if axes:
+                    grad_arr = grad_arr.sum(axis=axes, keepdims=True)
+                return grad_arr.reshape(target_shape)
+
             def grad_fn(grad):
                 grad.requires_grad = False
-                return (grad / other, -grad * self / other ** 2)
+                grad_self = grad.data / other.data
+                grad_self = _reduce_broadcast(grad_self, self.data.shape)
+
+                grad_other = -grad.data * self.data / (other.data ** 2)
+                grad_other = _reduce_broadcast(grad_other, other.data.shape)
+
+                return (Tensor(grad_self, requires_grad=False),
+                        Tensor(grad_other, requires_grad=False))
+
             out.grad_fn = grad_fn
         return out
-    
+        
     def __truediv__(self, other):
         return self.__div__(other)
     
