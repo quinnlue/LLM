@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     for epoch in range(EPOCHS):
         epoch_loss = []
-        for batch in tqdm(train_dl, desc=f"Epoch {epoch}"):
+        for batch in tqdm(train_dl, desc=f"Epoch {epoch}", position=0, leave=True):
             batch_t = xp_to_torch(batch)               # (B, S)
             inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
 
@@ -234,7 +234,8 @@ if __name__ == "__main__":
         model.eval()
         with torch.no_grad():
             val_losses = []
-            for vbatch in tqdm(val_dl, desc="valid"):
+            # Fix: Add position=1 and leave=False for validation progress bar
+            for vbatch in tqdm(val_dl, desc="Validation", position=1, leave=False):
                 vb = xp_to_torch(vbatch)
                 with autocast(enabled=use_amp):
                     logits = model(vb[:, :-1])
