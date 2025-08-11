@@ -23,7 +23,6 @@ class Model(Module):
             max_seq_len: int, 
             pad_idx: int, 
             n_heads: int, 
-            max_tokens_per_mini_batch: int,
             transformer_depth: int, 
             checkpoint_interval_seconds: int,
             train_dir: str,
@@ -39,7 +38,6 @@ class Model(Module):
         self.TRAIN_DIR = train_dir
         self.VAL_DIR = validation_dir
         self.CHECKPOINT_DIR = checkpoint_dir
-        self.MAX_TOKENS_PER_MINI_BATCH = max_tokens_per_mini_batch
         self.PAD = pad_idx
         self.is_cuda = xp.__name__ == "cupy"
 
