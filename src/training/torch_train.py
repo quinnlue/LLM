@@ -31,7 +31,7 @@ EOS_IDX    = 1
 DEPTH      = 12            # transformer layers
 
 
-BATCH_SIZE = 240
+BATCH_SIZE = 180
 MINI_BATCH_PER_STEP = 1
 DATA_COLUMN  = "seq"
 BIN_COLUMN   = "bin"
