@@ -46,7 +46,7 @@ class Module:
         return sum(p.n_params for p in self.parameters().values())
 
     def _build(self, input_shape: tuple):
-        dummy_input = Tensor(xp.zeros(input_shape), requires_grad=False)
+        dummy_input = xp.zeros(input_shape)
         self.forward(dummy_input)
 
     def eval(self, X: Tensor, y: Tensor, loss_fn):
