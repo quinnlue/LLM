@@ -23,12 +23,12 @@ VAL_DIR    = r"data/validation"
 CHECKPOINT_DIR = r"checkpoints"
 
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL    = 768
-N_HEADS    = 12
+D_MODEL = 512
+N_HEADS = 8
 MAX_SEQ_LEN = 512
-PAD_IDX    = 0
-EOS_IDX    = 1
-DEPTH      = 12            # transformer layers
+PAD_IDX = 0
+EOS_IDX = 1
+DEPTH = 4
 
 
 BATCH_SIZE = 180
@@ -194,9 +194,11 @@ if __name__ == "__main__":
     global_step   = 0
     last_ckpt_time = time.perf_counter()
 
-    for epoch in range(EPOCHS):
+    for epoch in range(100):
         epoch_loss = []
-        for batch in tqdm(train_dl, desc=f"Epoch {epoch}", position=0, leave=True):
+        # for batch in tqdm(train_dl, desc=f"Epoch {epoch}", position=0, leave=True):
+        batch = np.load("src/training/first_batch.npy")
+        if True:
             batch_t = xp_to_torch(batch)               # (B, S)
             inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
 
