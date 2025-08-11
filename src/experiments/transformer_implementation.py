@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.core.module import Module, Linear, LayerNorm
 from src.core.losses import CrossEntropyWithLogits
 from src.core.optim import SGD, AdamW
+from src.utils.lr_scheduler import LRScheduler
 from src.core.tensor import Tensor
 from src.tokenizer.tokenizer import tokenizer
 from src.utils.backend import xp
@@ -71,10 +72,25 @@ if __name__ == "__main__":
     VOCAB_SIZE = len(tokenizer.get_vocab())
     N_HEADS = 12
     MAX_SEQ_LEN = 512
+    EXPECTED_OPTIM_STEPS = 20_000
+    WARMUP_STEPS = 200
+    MIN_LR = 1e-5
+    MAX_LR = 5e-4
+    FINAL_LR = 1e-6
+    CHECKPOINT_INTERVAL_SECONDS = 3600
+
+    scheduler = LRScheduler(
+        warmup_steps=WARMUP_STEPS,
+        total_steps=EXPECTED_OPTIM_STEPS,
+        min_lr=MIN_LR,
+        max_lr=MAX_LR,
+        final_lr=FINAL_LR
+        )
+
 
     model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
     model._build((15, 15))
-    optimizer = AdamW(model.parameters(), lr=3e-5, precision=(xp.float16, xp.float32), clip_norm=1.0)
+    optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32), clip_norm=1.0)
 
 
     model.train(x, y, epochs=1000, optimizer=optimizer)
