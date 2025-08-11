@@ -6,6 +6,7 @@ from src.core.module import Module, Linear, LayerNorm
 from src.core.losses import CrossEntropyWithLogits
 from src.core.optim import SGD, AdamW
 from src.core.tensor import Tensor
+from src.tokenizer.tokenizer import tokenizer
 from src.utils.backend import xp
 import time
 from typing import List
@@ -67,13 +68,13 @@ class Net(Module):
                 
 if __name__ == "__main__":
     D_MODEL = 768
-    VOCAB_SIZE = 52000
+    VOCAB_SIZE = len(tokenizer.get_vocab())
     N_HEADS = 12
     MAX_SEQ_LEN = 512
 
     model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
     model._build((15, 15))
-    optimizer = AdamW(model.parameters(), lr=0.01, precision=(xp.float32, xp.float32), clip_norm=1.0)
+    optimizer = AdamW(model.parameters(), lr=0.0001, precision=(xp.float16, xp.float32), clip_norm=1.0)
 
 
     model.train(x, y, epochs=1000, optimizer=optimizer)
