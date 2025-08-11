@@ -100,22 +100,34 @@ class Model(Module):
     ):
         last_cp_time = time.perf_counter()
         loss_history = []
-        for epoch in range(self.epochs):
-            for i, batch in enumerate(tqdm(dl, desc=f"Training epoch {epoch}")):
-                y_hat = self.forward(batch[:,:-1])
-                loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
-                loss_history.append(float(loss.data))
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+        data = np.load("src/training/first_batch.npy")
+        for epoch in range(100):
+            y_hat = self.forward(data[:,:-1])
+            loss = CrossEntropyWithLogits(y_hat, data[:,1:])
+            loss_history.append(float(loss.data))
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            if epoch % 1 == 0:
+                print(f"Epoch {epoch}, Loss: {loss.data}")
 
-                if (i + 1) % 1 == 0:
-                    train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean()}")
+        # for epoch in range(self.epochs):
+        #     for i, batch in enumerate(tqdm(dl, desc=f"Training epoch {epoch}")):
 
-                # checkpointing & validation
-                if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
-                    self.checkpoint(optimizer)
-                    last_cp_time = time.perf_counter()
+        #         y_hat = self.forward(batch[:,:-1])
+        #         loss = CrossEntropyWithLogits(y_hat, batch[:,1:])
+        #         loss_history.append(float(loss.data))
+        #         loss.backward()
+        #         optimizer.step()
+        #         optimizer.zero_grad()
+
+        #         if (i + 1) % 1 == 0:
+        #             train_logger.info(f"Training loss: {np.array(loss_history[-25:]).mean()}")
+
+        #         # checkpointing & validation
+        #         if time.perf_counter() - last_cp_time > self.CHECKPOINT_INTERVAL_SECONDS:
+        #             self.checkpoint(optimizer)
+        #             last_cp_time = time.perf_counter()
 
 
 
