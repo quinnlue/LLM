@@ -154,21 +154,21 @@ def save_checkpoint(model, optimizer, step:int):
 # Put everything below inside a guard so imports are side-effect free.
 if __name__ == "__main__":
     # ─── data loaders ───
-    train_dl = DataLoader(
-        src_dir=TRAIN_DIR,
-        src_column=DATA_COLUMN,
-        batch_size=BATCH_SIZE,
-        shuffle_rows=True,
-        shuffle_files=True,
-    )
+    # train_dl = DataLoader(
+    #     src_dir=TRAIN_DIR,
+    #     src_column=DATA_COLUMN,
+    #     batch_size=BATCH_SIZE,
+    #     shuffle_rows=True,
+    #     shuffle_files=True,
+    # )
 
-    val_dl = DataLoader(
-        src_dir=VAL_DIR,
-        src_column=DATA_COLUMN,
-        batch_size=BATCH_SIZE,
-        shuffle_rows=True,
-        shuffle_files=True,
-    )
+    # val_dl = DataLoader(
+    #     src_dir=VAL_DIR,
+    #     src_column=DATA_COLUMN,
+    #     batch_size=BATCH_SIZE,
+    #     shuffle_rows=True,
+    #     shuffle_files=True,
+    # )
 
     # ─── model / optim / sched ───
     model = TransformerLM(
@@ -232,16 +232,16 @@ if __name__ == "__main__":
 
         train_logger.info(f"Epoch {epoch} avg loss: {sum(epoch_loss)/len(epoch_loss):.4f}")
 
-        # ─── quick validation ───
-        model.eval()
-        with torch.no_grad():
-            val_losses = []
-            # Fix: Add position=1 and leave=False for validation progress bar
-            for vbatch in tqdm(val_dl, desc="Validation", position=1, leave=False):
-                vb = xp_to_torch(vbatch)
-                with autocast(enabled=use_amp):
-                    logits = model(vb[:, :-1])
-                    vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
-                val_losses.append(vl.item())
-        val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
-        model.train()
+        # # ─── quick validation ───
+        # model.eval()
+        # with torch.no_grad():
+        #     val_losses = []
+        #     # Fix: Add position=1 and leave=False for validation progress bar
+        #     for vbatch in tqdm(val_dl, desc="Validation", position=1, leave=False):
+        #         vb = xp_to_torch(vbatch)
+        #         with autocast(enabled=use_amp):
+        #             logits = model(vb[:, :-1])
+        #             vl = criterion(logits.reshape(-1, VOCAB_SIZE), vb[:, 1:].reshape(-1))
+        #         val_losses.append(vl.item())
+        # val_logger.info(f"Epoch {epoch}  val_loss: {sum(val_losses)/len(val_losses):.4f}")
+        # model.train()
