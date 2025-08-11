@@ -15,12 +15,11 @@ import numpy as np
 
 
 NUM_HEADS = 4
-src = np.random.randint(low=0, high=16, size=(15, 15))
+# src = np.random.randint(low=0, high=16, size=(15, 15))
+src = np.load("src/training/first_batch.npy")
 x = src[:, :-1]
 y = src[:, 1:]
 
-x_mine = Tensor(x, requires_grad=False)
-y_mine = Tensor(y, requires_grad=False)
 
 
 
@@ -67,17 +66,17 @@ class Net(Module):
                 print(f"Epoch {epoch}, Loss: {loss.data}")
                 
 if __name__ == "__main__":
-    D_MODEL = 16
-    VOCAB_SIZE = 20
-    N_HEADS = 2
-    MAX_SEQ_LEN = 16
+    D_MODEL = 768
+    VOCAB_SIZE = 52000
+    N_HEADS = 12
+    MAX_SEQ_LEN = 512
 
     model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
     model._build((15, 15))
     optimizer = AdamW(model.parameters(), lr=0.01, precision=(xp.float32, xp.float32), clip_norm=1.0)
 
 
-    model.train(x_mine, y_mine, epochs=1000, optimizer=optimizer)
+    model.train(x, y, epochs=1000, optimizer=optimizer)
 
 
     
