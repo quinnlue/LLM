@@ -234,8 +234,8 @@ class AdamW(Optimizer):
             m_hat = m_t / xp.maximum(1 - self.beta_1 ** (self.t + 1), self.master_eps)
             v_hat = v_t / xp.maximum(1 - self.beta_2 ** (self.t + 1), self.master_eps)
 
-            if self.weight_decay != 0.0:
-                master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
+            # if self.weight_decay != 0.0:
+            #     master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
 
             master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + self.master_eps).clip(min=self.master_eps)
 
