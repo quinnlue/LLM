@@ -24,17 +24,24 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad.requires_grad = False
+                # Normalize axis input to a tuple of valid positive axes
                 if axis is None:
                     denom = self.data.size
-                    grad_self = grad.data * xp.ones_like(self.data) / denom
+                    grad_expanded = grad.data
                 else:
-                    if isinstance(axis, tuple):
-                        denom = 1
-                        for ax in axis:
-                            denom *= self.data.shape[ax]
-                    else:
-                        denom = self.data.shape[axis]
-                    grad_self = grad.data * xp.ones_like(self.data) / denom
+                    axes = axis if isinstance(axis, tuple) else (axis,)
+                    rank = self.data.ndim
+                    axes = tuple(a if a >= 0 else rank + a for a in axes)
+                    # product of reduced dimensions for scaling
+                    denom = 1
+                    for ax in axes:
+                        denom *= int(self.data.shape[ax])
+                    # reshape upstream grad to have singleton dims at reduced axes
+                    grad_shape = list(self.data.shape)
+                    for ax in axes:
+                        grad_shape[ax] = 1
+                    grad_expanded = xp.reshape(grad.data, grad_shape)
+                grad_self = xp.ones_like(self.data) * (grad_expanded / denom)
                 return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
         return out
@@ -55,7 +62,18 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad.requires_grad = False
-                return (grad.sum(axis=axis),)
+                if axis is None:
+                    grad_expanded = grad.data
+                else:
+                    axes = axis if isinstance(axis, tuple) else (axis,)
+                    rank = self.data.ndim
+                    axes = tuple(a if a >= 0 else rank + a for a in axes)
+                    grad_shape = list(self.data.shape)
+                    for ax in axes:
+                        grad_shape[ax] = 1
+                    grad_expanded = xp.reshape(grad.data, grad_shape)
+                grad_self = xp.ones_like(self.data) * grad_expanded
+                return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
         return out
     
@@ -132,7 +150,15 @@ class Tensor:
     
     def __iadd__(self, other):
         # raise NotImplementedError("Not implemented")
-        self.data += other.data if isinstance(other, Tensor) else other
+        if isinstance(other, Tensor):
+            if self.data.shape != other.data.shape:
+                raise ValueError(f"In-place add shape mismatch: {self.data.shape} vs {other.data.shape}")
+            self.data += other.data
+        else:
+            # Allow scalar add only
+            if xp.asarray(other).ndim != 0:
+                raise ValueError("In-place add only supports scalar non-Tensor values")
+            self.data += other
         return self
     
     def astype(self, dtype):
@@ -205,7 +231,19 @@ class Tensor:
             out.parents = (self, other)
             def grad_fn(grad):
                 grad.requires_grad = False
-                return (grad, -grad)
+                def _reduce_broadcast(grad_arr, target_shape):
+                    if grad_arr.shape == target_shape:
+                        return grad_arr
+                    ndim_diff = grad_arr.ndim - len(target_shape)
+                    target_ext = (1,) * ndim_diff + target_shape
+                    axes = tuple(i for i, (g_dim, t_dim) in enumerate(zip(grad_arr.shape, target_ext)) if t_dim == 1)
+                    if axes:
+                        grad_arr = grad_arr.sum(axis=axes, keepdims=True)
+                    return grad_arr.reshape(target_shape)
+
+                grad_self  = _reduce_broadcast(grad.data, self.data.shape)
+                grad_other = _reduce_broadcast(-grad.data, other.data.shape)
+                return (Tensor(grad_self, requires_grad=False), Tensor(grad_other, requires_grad=False))
             out.grad_fn = grad_fn
         return out
     
