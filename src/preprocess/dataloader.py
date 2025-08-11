@@ -26,6 +26,7 @@ class Dataset:
     
     def __iter__(self):
         for i in range(0, len(self.src), self.batch_size):
+            print(self.x[i:i+self.batch_size].shape)
             yield Tensor(self.x[i:i+self.batch_size])
 
 
