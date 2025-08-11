@@ -72,9 +72,9 @@ class Model(Module):
         # --------------------------------------------------
     
     def forward(self, idx):
-        x, padding_mask = self.e.get_sentence_embedding(idx)
+        x = self.e.get_sentence_embedding(idx)
         for head in self.heads:
-            x = head(x, padding_mask)
+            x = head(x)
         x = self.project(x)
         return x
     

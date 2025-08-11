@@ -26,7 +26,7 @@ class Dataset:
     
     def __iter__(self):
         for i in range(0, len(self.src), self.batch_size):
-            yield Tensor(self.x[i:i+self.batch_size])
+            yield Tensor(self.x[i:i+self.batch_size], dtype=xp.int32, requires_grad=False)
 
 
 class DataLoader:

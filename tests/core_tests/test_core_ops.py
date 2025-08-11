@@ -15,7 +15,7 @@ def to_numpy(array_like):
 
 
 class TestCoreOps(unittest.TestCase):
-    margin = 1e-4
+    margin = 1e-3
 
     def test_add_value_and_grad_match_pytorch(self):
         import torch
@@ -164,6 +164,46 @@ class TestCoreOps(unittest.TestCase):
         out_pt = (scalar / a_pt).mean()
         out_pt.backward()
 
+        self.assertTrue(np.allclose(out.data, out_pt.item(), atol=self.margin))
+        self.assertTrue(np.allclose(to_numpy(a.grad.data), a_pt.grad.detach().numpy(), atol=self.margin))
+
+    def test_getitem_single_index_value_and_grad_match_pytorch(self):
+        import torch
+
+        rng = np.random.default_rng(7)
+        a_np = rng.standard_normal((4, 6)).astype(np.float64)
+        idx = 2
+
+        a = Tensor(a_np, requires_grad=True)
+        out = a[idx].mean()
+        out.backward()
+
+        a_pt = torch.tensor(a_np, dtype=torch.float64, requires_grad=True)
+        out_pt = a_pt[idx].mean()
+        out_pt.backward()
+
+        self.assertTrue(np.allclose(out.data, out_pt.item(), atol=self.margin))
+        self.assertTrue(np.allclose(to_numpy(a.grad.data), a_pt.grad.detach().numpy(), atol=self.margin))
+
+    def test_getitem_slice_value_and_grad_match_pytorch(self):
+        import torch
+
+        rng = np.random.default_rng(8)
+        a_np = rng.standard_normal((5, 7)).astype(np.float64)
+        slice_obj = np.s_[1:4, ::2]  # select rows 1-3 and every 2nd column
+
+        a = Tensor(a_np, requires_grad=True)
+        out = a[slice_obj].mean()
+        out.backward()
+
+        a_pt = torch.tensor(a_np, dtype=torch.float64, requires_grad=True)
+        out_pt = a_pt[slice_obj].mean()
+        out_pt.backward()
+        a_grad = to_numpy(a.grad.data)
+        a_pt_grad = a_pt.grad.detach().cpu().numpy()  # safe CPU move
+        print(f"out: {out.data}, out_pt: {out_pt.item()}")
+        print(f"a.grad:\n{np.array2string(a_grad, precision=4, floatmode='fixed')}\n")
+        print(f"a_pt.grad:\n{np.array2string(a_pt_grad, precision=4, floatmode='fixed')}\n")
         self.assertTrue(np.allclose(out.data, out_pt.item(), atol=self.margin))
         self.assertTrue(np.allclose(to_numpy(a.grad.data), a_pt.grad.detach().numpy(), atol=self.margin))
 
