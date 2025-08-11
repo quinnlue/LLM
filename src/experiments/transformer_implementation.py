@@ -90,7 +90,7 @@ class Net(Module):
         return x
 
     def train(self, x, y, epochs, optimizer):
-        for epoch in range(epochs):
+        for epoch in range(1):
             # Inputs to training step
             B, T = x.shape if hasattr(x, "shape") else (None, None)
             self._check_shape("train/x (token ids)", x, expected=(B, T))
