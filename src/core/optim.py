@@ -140,7 +140,7 @@ class Optimizer:
         return xp.sqrt(total_norm)
 
 class AdamW(Optimizer):
-    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.999, eps=1e-5, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
+    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.95, eps=1e-5, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
         # Fix: Pass the actual precision parameter instead of hardcoding
         super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision)
         self.weight_decay = weight_decay
