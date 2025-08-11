@@ -219,7 +219,7 @@ if __name__ == "__main__":
             global_step += 1
 
             # ─── logging ───
-            if global_step % 25 == 0:
+            if global_step % 1 == 0:
                 print(f"step {global_step}  loss {sum(epoch_loss[-25:])/25:.4f}")
                 # train_logger.info(f"step {global_step}  loss {sum(epoch_loss[-50:])/50:.4f}")
 
