@@ -113,17 +113,17 @@ class Module:
         layer = Linear(in_features, out_features, module_dict, layer_dict, use_bias, name)
         return layer
         
-    def transformer(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_type="transformer"):
+    def transformer(self, d_model, n_heads, mlp_ratio=4, module_type="transformer"):
         from src.models.transformer import Transformer
         module_dict = self.register_module(module_type)
-        layer = Transformer(d_model, n_heads, pad_idx, mlp_ratio, module_dict)
+        layer = Transformer(d_model, n_heads, mlp_ratio, module_dict)
         return layer
     
-    def embedding(self, vocab_size, d_model, max_seq_len, pad_idx=0, module_type="embedding", layer_type="embedding", name="embedding"):
+    def embedding(self, vocab_size, d_model, max_seq_len, module_type="embedding", layer_type="embedding", name="embedding"):
         from src.models.transformer import Embedding
         module_dict = self.register_module(module_type)
         layer_dict = self.register_layer(layer_type, module_dict, name)
-        layer = Embedding(vocab_size, d_model, max_seq_len, pad_idx, module_dict, layer_dict)
+        layer = Embedding(vocab_size, d_model, max_seq_len, module_dict, layer_dict)
         return layer
 
     def xavier_uniform(self, shape):

@@ -1,10 +1,10 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
 from src.core.tensor import Tensor
-from src.core.losses import MSE, BCE, CrossEntropy
+from src.core.losses import MeanSquaredError, BinaryCrossEntropyWithLogits, CrossEntropyWithLogits
 from src.utils.backend import xp
 
 
@@ -22,7 +22,7 @@ def test_mse_value_and_grad():
     y_hat = Tensor(y_hat_arr, requires_grad=True)
     y     = Tensor(y_arr,     requires_grad=False)
 
-    loss = MSE(y_hat, y)
+    loss = MeanSquaredError(y_hat, y)
 
     # ----- value -----
     expected_loss = xp.mean((y_hat_arr - y_arr) ** 2)
@@ -42,18 +42,19 @@ def test_bce_value_and_grad():
     y_hat = Tensor(y_hat_arr, requires_grad=True)
     y     = Tensor(y_arr,     requires_grad=False)
 
-    loss = BCE(y_hat, y)
+    loss = BinaryCrossEntropyWithLogits(y_hat, y)
 
     # ----- value -----
+    sigmoid = 1 / (1 + xp.exp(-y_hat_arr))          # convert logits → probabilities
     expected_loss = -xp.mean(
-        y_arr * xp.log(y_hat_arr) + (1 - y_arr) * xp.log(1 - y_hat_arr)
+        y_arr * xp.log(sigmoid) + (1 - y_arr) * xp.log(1 - sigmoid)
     )
     assert_allclose(loss.data, expected_loss)
 
     # ----- gradient -----
     loss.backward()
     N = y_hat_arr.size
-    expected_grad = (-y_arr / y_hat_arr + (1 - y_arr) / (1 - y_hat_arr)) / N
+    expected_grad = (sigmoid - y_arr) / N           # d L / d logits
     assert_allclose(y_hat.grad.data, expected_grad)
 
 
@@ -70,7 +71,7 @@ def test_cross_entropy_value_and_grad():
     logits  = Tensor(logits_arr,  requires_grad=True)
     targets = Tensor(targets_arr, requires_grad=False)
 
-    loss = CrossEntropy(logits, targets)
+    loss = CrossEntropyWithLogits(logits, targets)
 
     # ----- value -----
     max_logits   = logits_arr.max(axis=-1, keepdims=True)
@@ -92,5 +93,5 @@ def test_cross_entropy_value_and_grad():
 
 
 test_mse_value_and_grad()
-# test_bce_value_and_grad()
+test_bce_value_and_grad()
 test_cross_entropy_value_and_grad()

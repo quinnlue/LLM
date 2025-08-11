@@ -405,7 +405,7 @@ class Tensor:
         if self not in _visited:
             _visited[self] = grad
         else:
-            # _visited[self] += grad
+            _visited[self] += grad
             return
 
         # store the total gradient

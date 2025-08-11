@@ -3,8 +3,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from src.core.module import Module, Linear, LayerNorm
-from src.core.losses import CrossEntropy, BCE
-from src.core.optim import Standard, AdamW
+from src.core.losses import CrossEntropyWithLogits
+from src.core.optim import SGD, AdamW
 from src.core.tensor import Tensor
 from src.utils.backend import xp
 import time
@@ -15,7 +15,7 @@ import numpy as np
 
 
 NUM_HEADS = 4
-src = np.random.randint(low=1, high=16, size=(128, 16))
+src = np.random.randint(low=0, high=16, size=(15, 15))
 x = src[:, :-1]
 y = src[:, 1:]
 
@@ -23,19 +23,34 @@ x_mine = Tensor(x, requires_grad=False)
 y_mine = Tensor(y, requires_grad=False)
 
 
-class Net(Module):
-    def __init__(self, d_model, n_heads, vocab_size, max_seq_len, pad_idx=0):
-        super().__init__()
-        self.e = self.embedding(vocab_size, d_model, max_seq_len, pad_idx, name="Embedding")
 
-        self.heads = [self.transformer(d_model=d_model, n_heads=n_heads) for _ in range(NUM_HEADS)]
+
+class Net(Module):
+    def __init__(self, d_model, n_heads, vocab_size, max_seq_len):
+        super().__init__()
+
+        self.e = self.embedding(vocab_size, d_model, max_seq_len, name="Embedding")
+
+        self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
-        x, padding_mask = self.e.get_sentence_embedding(idx)
-        x = Tensor(x.data, requires_grad=False)
-        for head in self.heads:
-            x = head(x, padding_mask)
+        x = self.e.get_sentence_embedding(idx)
+        x = self.head1(x)
+        x = self.head2(x)
+        x = self.head3(x)
+        x = self.head4(x)
+        x = self.head5(x)
+        x = self.head6(x)
+        x = self.head7(x)
+        x = self.head8(x)
         x = self.project(x)
         return x
 
@@ -43,24 +58,24 @@ class Net(Module):
         for epoch in range(epochs):
             y_hat = self.forward(x)
             # print(y_hat.shape, y.shape)
-            loss = CrossEntropy(y_hat, y, axis=-1)
+            loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
     
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            if epoch % 1 == 0:
+            if epoch % 10 == 0:
                 print(f"Epoch {epoch}, Loss: {loss.data}")
                 
 if __name__ == "__main__":
-    D_MODEL = 48
+    D_MODEL = 16
     VOCAB_SIZE = 20
-    N_HEADS = 4
-    MAX_SEQ_LEN = 32
-    PAD_IDX = 0
+    N_HEADS = 2
+    MAX_SEQ_LEN = 16
 
-    model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN, pad_idx=PAD_IDX)
-    model._build((128, 15))
-    optimizer = AdamW(model.parameters(), lr=0.001, precision=(xp.float32, xp.float32))
+    model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
+    model._build((15, 15))
+    optimizer = SGD(model.parameters(), lr=0.01, clip_norm=1.0)
+    # optimizer = AdamW(model.parameters(), lr=0.01, precision=(xp.float32, xp.float32), clip_norm=1.0)
 
 
     model.train(x_mine, y_mine, epochs=1000, optimizer=optimizer)

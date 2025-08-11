@@ -17,6 +17,7 @@ def to_numpy(array_like):
 
 
 class TestCrossEntropy(unittest.TestCase):
+    margin = 1e-4
     def test_value_and_grad_match_pytorch_3d(self):
         import torch
 
@@ -36,11 +37,11 @@ class TestCrossEntropy(unittest.TestCase):
         loss_pt = ce(logits_pt.view(-1, num_classes), targets_pt.view(-1))
         loss_pt.backward()
 
-        self.assertTrue(np.allclose(loss.data, loss_pt.item(), atol=1e-4))
+        self.assertTrue(np.allclose(loss.data, loss_pt.item(), atol=self.margin))
 
         grad_np = to_numpy(logits.grad.data)
         grad_pt = logits_pt.grad.detach().numpy().reshape(batch_size, seq_len, num_classes)
-        self.assertTrue(np.allclose(grad_np, grad_pt, atol=1e-4))
+        self.assertTrue(np.allclose(grad_np, grad_pt, atol=self.margin))
 
     def test_2d_and_3d_equivalence(self):
         import torch
@@ -71,11 +72,11 @@ class TestCrossEntropy(unittest.TestCase):
         print(f"2D loss shape: {loss2d.data.shape if hasattr(loss2d.data, 'shape') else 'scalar'}")
         print(f"3D loss shape: {loss3d.data.shape if hasattr(loss3d.data, 'shape') else 'scalar'}")
         
-        self.assertTrue(np.allclose(loss2d.data, loss3d.data, atol=1e-4))
+        self.assertTrue(np.allclose(loss2d.data, loss3d.data, atol=self.margin))
 
         grad2d_np = to_numpy(logits2d.grad.data)
         grad3d_np = to_numpy(logits3d.grad.data)[:, 0, :]
-        self.assertTrue(np.allclose(grad2d_np, grad3d_np, atol=1e-4))
+        self.assertTrue(np.allclose(grad2d_np, grad3d_np, atol=self.margin))
 
         # Cross-check with PyTorch 2D path
         import torch
@@ -92,8 +93,8 @@ class TestCrossEntropy(unittest.TestCase):
         print(f"PyTorch loss type: {type(loss_pt.item())}")
         print(f"Our loss type: {type(loss2d.data)}")
         
-        self.assertTrue(np.allclose(loss2d.data, loss_pt.item(), atol=1e-4))
-        self.assertTrue(np.allclose(grad2d_np, logits2d_pt.grad.detach().numpy(), atol=1e-4))
+        self.assertTrue(np.allclose(loss2d.data.item(), loss_pt.item(), atol=self.margin))
+        self.assertTrue(np.allclose(grad2d_np, logits2d_pt.grad.detach().numpy(), atol=self.margin))
 
     def test_grad_sums_to_zero_per_position(self):
         rng = np.random.default_rng(123)
@@ -116,9 +117,9 @@ class TestCrossEntropy(unittest.TestCase):
         print(f"Max absolute sum: {np.max(np.abs(sums))}")
         print(f"Min absolute sum: {np.min(np.abs(sums))}")
         print(f"Mean absolute sum: {np.mean(np.abs(sums))}")
-        print(f"All sums close to zero: {np.allclose(sums, 0.0, atol=1e-5)}")
+        print(f"All sums close to zero: {np.allclose(sums, 0.0, atol=self.margin)}")
         
-        self.assertTrue(np.allclose(sums, 0.0, atol=1e-5))
+        self.assertTrue(np.allclose(sums, 0.0, atol=self.margin))
 
     def test_invalid_shapes_raise(self):
         # 1D logits

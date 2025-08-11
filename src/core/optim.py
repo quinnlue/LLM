@@ -249,9 +249,8 @@ class AdamW(Optimizer):
 
         self.t += 1
 
-class Standard(Optimizer):
+class SGD(Optimizer):
     def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0):
-        raise NotImplementedError("Standard optimizer not implemented")
         super().__init__(params, lr=lr, clip_norm=clip_norm)
         self.clip_norm = clip_norm
 
@@ -262,14 +261,13 @@ class Standard(Optimizer):
         # Increase timestep
         self.t += 1
         lr_t = self.get_lr(self.t)
-        lr_t = 0.0005
 
         for param in self.params.values():
             if param['param'].grad is None:
                 continue
 
             grad = param['param'].grad
-            grad = self._clip_norm(grad)
+            # grad = self._clip_norm(grad)
             grad = self.reduce_like(grad, param['param'].data.shape)
 
             param['param'].data = param['param'].data - lr_t * grad.data

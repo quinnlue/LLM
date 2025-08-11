@@ -21,7 +21,7 @@ def BinaryCrossEntropyWithLogits(logits: Tensor, y: Tensor):
         out.grad_fn = grad_fn
     return out
 
-def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pad_idx=0):
+def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1):
     eps = 1e-5
 
     # Handle (B, S, V) and (B, V)
@@ -45,10 +45,6 @@ def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1, use_mask=True, pa
     batch_idx = xp.arange(B)[:, None]
     seq_idx = xp.arange(S)[None, :]  
     tgt_idx = xp.array(y.data).astype(xp.int32)
-
-    if use_mask:
-        mask = y.data != pad_idx
-        tgt_idx = tgt_idx * mask
 
     # Get the target log probabilities
     idx = (batch_idx, seq_idx, tgt_idx)

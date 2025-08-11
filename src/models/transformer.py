@@ -3,9 +3,8 @@ from src.core.module import Module
 from src.core.tensor import Tensor
 
 class Transformer(Module):
-    def __init__(self, d_model, n_heads, pad_idx=0, mlp_ratio=4, module_dict=None):
+    def __init__(self, d_model, n_heads, mlp_ratio=4, module_dict=None):
         super().__init__()
-        self.pad_idx = pad_idx
         self.d_head = d_model // n_heads
         self.n_heads = n_heads
 
@@ -24,7 +23,7 @@ class Transformer(Module):
         self.ln2 = self.layer_norm(axis=-1, module_dict=module_dict, name="ln2")
 
     
-    def attend(self, x: Tensor, padding_mask: xp.ndarray):
+    def attend(self, x: Tensor):
         
         q = self.q(x)
         k = self.k(x)
@@ -48,10 +47,6 @@ class Transformer(Module):
         casual_mask = xp.triu(xp.ones((atten_scores.shape[-1], atten_scores.shape[-1])) * -xp.inf, k=1).astype(xp.float16)
         atten_scores.data += casual_mask
 
-        if padding_mask is not None:
-            # similar, avoid grads
-            atten_scores.data += padding_mask
-
         atten_probs = self.softmax(atten_scores, axis=3)
         
 
@@ -68,11 +63,11 @@ class Transformer(Module):
 
         return output
     
-    def forward(self, x: Tensor, padding_mask: xp.ndarray):
+    def forward(self, x: Tensor):
         
         residual = x
         x = self.ln1(x)
-        atten_out = self.attend(x, padding_mask)
+        atten_out = self.attend(x)
         x = residual + atten_out
         
 
@@ -89,16 +84,15 @@ class Transformer(Module):
 
         return x
     
-    def __call__(self, x: Tensor, padding_mask: xp.ndarray=None):
-        return self.forward(x, padding_mask)
+    def __call__(self, x: Tensor):
+        return self.forward(x)
 
 class Embedding(Module):
-    def __init__(self, vocab_size, d_model, max_seq_len, pad_idx=0, module_dict=None, layer_dict=None):
+    def __init__(self, vocab_size, d_model, max_seq_len, module_dict=None, layer_dict=None):
         super().__init__()
         self.max_seq_len = max_seq_len
         self.vocab_size = vocab_size
         self.d_model = d_model
-        self.pad_idx = pad_idx
         self.W = Tensor(xp.random.randn(vocab_size, d_model).astype(xp.float16), requires_grad=True)
         self.pe = Tensor(xp.random.randn(max_seq_len, d_model).astype(xp.float16), requires_grad=True)
 
@@ -108,14 +102,12 @@ class Embedding(Module):
     def get_sentence_embedding(self, idx):
         idx = idx.data.astype(xp.int32)
         B, T = idx.shape
-        padding_mask = xp.where(idx == self.pad_idx, -65504, 0).astype(xp.float16)
-        padding_mask = padding_mask.reshape(B, 1, 1, T)
-        
+
         embed_vectors = self.W[idx]
         pe_slice = self.pe[:T][None, :, :]
         output = embed_vectors + pe_slice
 
-        return output, padding_mask
+        return output
 
 
 
