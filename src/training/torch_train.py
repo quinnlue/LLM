@@ -22,7 +22,7 @@ TRAIN_DIR  = r"data/train"
 VAL_DIR    = r"data/validation"
 CHECKPOINT_DIR = r"checkpoints"
 
-VOCAB_SIZE = len(tokenizer.get_vocab())   # 21680 in your data
+VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL    = 768
 N_HEADS    = 12
 MAX_SEQ_LEN = 512
@@ -39,7 +39,7 @@ BIN_COLUMN   = "bin"
 EPOCHS                    = 1
 EXPECTED_OPTIM_STEPS      = 20_000
 WARMUP_STEPS              = 200
-MIN_LR, MAX_LR, FINAL_LR  = 3e-5, 1e-3, 1e-6
+MIN_LR, MAX_LR, FINAL_LR  = 1e-5, 5e-4, 1e-6
 CHECKPOINT_INTERVAL_SECONDS = 3_600
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
