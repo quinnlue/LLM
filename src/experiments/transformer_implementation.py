@@ -41,10 +41,10 @@ class Net(Module):
         self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
-        self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
+        # self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
+        # self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
+        # self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
+        # self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
@@ -59,10 +59,10 @@ class Net(Module):
         x = self.head2(x)
         x = self.head3(x)
         x = self.head4(x)
-        x = self.head5(x)
-        x = self.head6(x)
-        x = self.head7(x)
-        x = self.head8(x)
+        # x = self.head5(x)
+        # x = self.head6(x)
+        # x = self.head7(x)
+        # x = self.head8(x)
 
         # Final projection to vocabulary logits
         x = self.project(x)
@@ -97,7 +97,7 @@ class Net(Module):
 
 
 if __name__ == "__main__":
-    D_MODEL = 768
+    D_MODEL = 512
     VOCAB_SIZE = len(tokenizer.get_vocab())
     N_HEADS = 12
     MAX_SEQ_LEN = 512
