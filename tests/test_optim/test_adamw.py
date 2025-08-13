@@ -151,7 +151,7 @@ class TestAdamW(unittest.TestCase):
         set_seed(7)
 
         # exaggerated inputs to guarantee a large gradient
-        x_data = (xp.random.randn(128, 64) * 1e4).astype(xp.float32)
+        x_data = (xp.random.randn(128, 64) * 1e8).astype(xp.float32)
         w_data = xp.random.randn(64, 64).astype(xp.float32)
 
         # tensors -----------------------------------------------------------------------
@@ -176,6 +176,12 @@ class TestAdamW(unittest.TestCase):
 
         y_clip.backward()
         y_noclip.backward()
+
+
+        total_norm_clip = optim_clip._get_total_norm()
+        total_norm_noclip = optim_noclip._get_total_norm()
+        print(f"total_norm_clip: {total_norm_clip}")
+        print(f"total_norm_noclip: {total_norm_noclip}")
 
         optim_clip.step()
         optim_noclip.step()

@@ -48,67 +48,47 @@ class Net(Module):
         self.e = self.embedding(vocab_size, d_model, max_seq_len, name="Embedding")
 
         self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
         # Input token indices
         B, T = idx.shape if hasattr(idx, "shape") else (None, None)
-        self._check_shape("input idx", idx, expected=(B, T))
 
         # Embedding + positional encoding
         x = self.e.get_sentence_embedding(idx)
-        self._check_shape("embedding output", x, expected=(B, T, self.d_model))
 
         # Transformer blocks (residual-preserving shape)
         x = self.head1(x)
-        self._check_shape("head1 output", x, expected=(B, T, self.d_model))
-        # x = self.head2(x)
-        # self._check_shape("head2 output", x, expected=(B, T, self.d_model))
-        # x = self.head3(x)
-        # self._check_shape("head3 output", x, expected=(B, T, self.d_model))
-        # x = self.head4(x)
-        # self._check_shape("head4 output", x, expected=(B, T, self.d_model))
-        # x = self.head5(x)
-        # self._check_shape("head5 output", x, expected=(B, T, self.d_model))
-        # x = self.head6(x)
-        # self._check_shape("head6 output", x, expected=(B, T, self.d_model))
-        # x = self.head7(x)
-        # self._check_shape("head7 output", x, expected=(B, T, self.d_model))
-        # x = self.head8(x)
-        # self._check_shape("head8 output", x, expected=(B, T, self.d_model))
+        x = self.head2(x)
+        x = self.head3(x)
+        x = self.head4(x)
+        x = self.head5(x)
+        x = self.head6(x)
+        x = self.head7(x)
+        x = self.head8(x)
 
         # Final projection to vocabulary logits
         x = self.project(x)
-        self._check_shape("project logits", x, expected=(B, T, self.vocab_size))
         return x
 
     def train(self, x, y, epochs, optimizer):
         for epoch in range(1):
             # Inputs to training step
             B, T = x.shape if hasattr(x, "shape") else (None, None)
-            self._check_shape("train/x (token ids)", x, expected=(B, T))
-            self._check_shape("train/y (next token ids)", y, expected=(B, T))
 
             y_hat = self.forward(x)
 
             # Expect logits for each position and vocab
-            self._check_shape("y_hat (logits)", y_hat, expected=(B, T, self.vocab_size))
-            self._check_shape("y (targets)", y, expected=(B, T))
 
             # Loss expects axis=-1 over vocab
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
-            # scalar loss expected; if Tensor, its shape should be ()
-            try:
-                self._check_shape("loss tensor", loss, expected=())
-            except Exception:
-                pass
     
             loss.backward()
 

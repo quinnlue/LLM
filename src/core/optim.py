@@ -230,16 +230,13 @@ class AdamW(Optimizer):
                 master_param_tensor.data = master_param_tensor.data - wd_lr * master_param_tensor.data
             # ----------------------------------------------------------
 
-            del grad
+            print("Total norm: ", self._get_total_norm())
 
             # Add numerical stability checks for mixed precision
             if xp.isnan(grad_data).any() or xp.isinf(grad_data).any():
                 print(f"Warning: NaN/Inf detected in gradients, skipping update")
                 continue
 
-            # # Scale gradients to prevent underflow in float16
-            # if self.mixed_precision and self.master_dtype == xp.float16:
-            #     grad_data = grad_data * 2**8  # Scale up by 256
 
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad_data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad_data ** 2)
