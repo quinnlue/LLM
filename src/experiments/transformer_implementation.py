@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 
-src = np.load("first_batch.npy") # this is of shape (16, 512)
+src = np.random.randint(0,47999, size=(16, 512))
 x = src[:, :-1]
 y = src[:, 1:]
 
@@ -91,57 +91,8 @@ class Net(Module):
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
     
             loss.backward()
-
-            # Snapshot params pre-step to compute update tensors post-step
-            _pre_step = {}
-
-            # Backprop debug: print parameter and update (grad) shapes before optimizer applies updates
-            try:
-                for pname, p in self.parameters().items():
-                    g = p.grad
-                    if g is None:
-                        continue
-                    try:
-                        _pre_step[pname] = p.data.copy()
-                    except Exception:
-                        _pre_step[pname] = None
-                    p_shape = tuple(p.shape) if hasattr(p, "shape") else None
-                    g_shape = tuple(g.shape) if hasattr(g, "shape") else None
-                    g_has_nan = False
-                    g_has_inf = False
-                    try:
-                        g_has_nan = bool((g.data != g.data).any())  # NaN check without xp.isnan for portability
-                        # Inf check: compare against large finite bound
-                        from src.utils.backend import xp as _xp
-                        g_has_inf = bool((_xp.isinf(g.data)).any())
-                    except Exception:
-                        pass
-                    mismatch_note = " [MISMATCH]" if (p_shape is not None and g_shape is not None and p_shape != g_shape) else ""
-                    print(f"[BACKPROP] update -> {pname}: param{p_shape}, grad{g_shape}{mismatch_note}" + (" [NaN]" if g_has_nan else "") + (" [Inf]" if g_has_inf else ""))
-            except Exception as _dbg_ex:
-                print(f"[BACKPROP] debug print failed: {_dbg_ex}")
-
             optimizer.step()
 
-            # Post-step: compute and report actual applied update shapes
-            try:
-                from src.utils.backend import xp as _xp
-                for pname, p in self.parameters().items():
-                    old = _pre_step.get(pname, None)
-                    if old is None:
-                        continue
-                    try:
-                        upd = p.data - old
-                        u_shape = tuple(upd.shape)
-                        p_shape = tuple(p.shape) if hasattr(p, "shape") else None
-                        mismatch_note = " [MISMATCH]" if (p_shape is not None and u_shape is not None and p_shape != u_shape) else ""
-                        u_has_nan = bool((_xp.isnan(upd)).any()) if hasattr(_xp, 'isnan') else bool((upd != upd).any())
-                        u_has_inf = bool((_xp.isinf(upd)).any()) if hasattr(_xp, 'isinf') else False
-                        print(f"[UPDATE ] applied -> {pname}: param{p_shape}, update{u_shape}{mismatch_note}" + (" [NaN]" if u_has_nan else "") + (" [Inf]" if u_has_inf else ""))
-                    except Exception as _upd_ex:
-                        print(f"[UPDATE ] failed to compute update for {pname}: {_upd_ex}")
-            except Exception as _post_ex:
-                print(f"[UPDATE ] post-step debug failed: {_post_ex}")
             optimizer.zero_grad()
             if epoch % 1 == 0:
                 print(f"Loss: {loss.data}")
