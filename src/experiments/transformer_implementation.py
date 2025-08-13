@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 
-src = np.random.randint(0,16, size=(16, 512))
+src = np.random.randint(0,len(tokenizer.get_vocab()) - 1, size=(16, 512))
 x = src[:, :-1]
 y = src[:, 1:]
 
