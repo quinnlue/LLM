@@ -68,8 +68,8 @@ class Transformer(Module):
         x = self.ln1(x)
 
         atten_out = self.attend(x)
-
-        x = atten_out + residual
+        # TODO: remove detach
+        x = atten_out + residual.detach()
 
         # MLP
         residual = x
@@ -81,7 +81,7 @@ class Transformer(Module):
 
         x_mlp = self.proj_down(x_mlp)
 
-        x = x_mlp + residual
+        x = x_mlp + residual.detach()
 
         return x
     
