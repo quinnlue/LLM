@@ -514,13 +514,7 @@ class Tensor:
 
         return out
 
-    def backward(self, grad=None, seen=None):
-        if seen is None:
-            seen = set()
-        if id(self) in seen:
-            return
-        seen.add(id(self))
-
+    def backward(self, grad=None):
         if not self.requires_grad:
             return
 
@@ -533,13 +527,11 @@ class Tensor:
         else:
             self.grad.data += grad.data
 
-        # Propagate gradient to parents once
+        # Propagate this incoming gradient contribution to parents
         if self.grad_fn is not None and self.parents:
             grads = self.grad_fn(grad)
             for parent, g in zip(self.parents, grads):
-                if parent is not None:   # optional safety
-                    parent.backward(g, seen)
-
+                parent.backward(g)
 
         
     def zero_grad(self):
