@@ -101,6 +101,8 @@ class Embedding(Module):
         self.register_parameter(param=self.pe, module_dict=module_dict, layer_type="embedding", layer_dict=layer_dict, name="pe")
     
     def get_sentence_embedding(self, idx):
+        if isinstance(idx, Tensor):
+            idx = idx.data
         idx = idx.astype(xp.int32)
         B, T = idx.shape
         embed_vectors = self.W[idx]
