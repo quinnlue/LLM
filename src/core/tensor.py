@@ -1,6 +1,7 @@
 from src.utils.backend import xp
 
 class Tensor:
+    count = 0
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
         if isinstance(data, xp.ndarray):
             # keep the same buffer whenever possible
@@ -515,6 +516,8 @@ class Tensor:
         return out
 
     def backward(self, grad=None, seen=None):
+        Tensor.count += 1
+        print(f"Tensor.count: {Tensor.count}")
         if seen is None:
             seen = set()
         if id(self) in seen:
