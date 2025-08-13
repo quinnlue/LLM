@@ -54,12 +54,48 @@ class Tensor:
             out.parents = (self,)
             def grad_fn(grad):
                 grad.requires_grad = False
-                return (grad.data * (self.data == xp.max(self.data, axis=axis, keepdims=keepdims)),)
+                rank = self.data.ndim
+                if axis is None:
+                    axes = tuple(range(rank))
+                else:
+                    axes = axis if isinstance(axis, tuple) else (axis,)
+                    axes = tuple(a if a >= 0 else rank + a for a in axes)
+                grad_shape = list(self.data.shape)
+                for ax in axes:
+                    grad_shape[ax] = 1
+                grad_expanded = xp.reshape(grad.data, grad_shape)
+                max_vals = xp.max(self.data, axis=axis, keepdims=True)
+                mask = (self.data == max_vals)
+                grad_self = grad_expanded * mask
+                return (Tensor(grad_self, requires_grad=False),)
             out.grad_fn = grad_fn
         return out
-
-    def sum(self, axis=None):
-        out = Tensor(xp.sum(self.data, axis=axis), requires_grad=self.requires_grad)
+    
+    def min(self, axis=None, keepdims=False):
+        out = Tensor(xp.min(self.data, axis=axis, keepdims=keepdims), requires_grad=self.requires_grad)
+        if out.requires_grad:
+            out.parents = (self,)
+            def grad_fn(grad):
+                grad.requires_grad = False
+                rank = self.data.ndim
+                if axis is None:
+                    axes = tuple(range(rank))
+                else:
+                    axes = axis if isinstance(axis, tuple) else (axis,)
+                    axes = tuple(a if a >= 0 else rank + a for a in axes)
+                grad_shape = list(self.data.shape)
+                for ax in axes:
+                    grad_shape[ax] = 1
+                grad_expanded = xp.reshape(grad.data, grad_shape)
+                min_vals = xp.min(self.data, axis=axis, keepdims=True)
+                mask = (self.data == min_vals)
+                grad_self = grad_expanded * mask
+                return (Tensor(grad_self, requires_grad=False),)
+            out.grad_fn = grad_fn
+        return out
+    
+    def sum(self, axis=None, keepdims=False):
+        out = Tensor(xp.sum(self.data, axis=axis, keepdims=keepdims), requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
             def grad_fn(grad):
@@ -90,11 +126,6 @@ class Tensor:
             return self.data.shape[0] * self.data.shape[1]
         else:
             raise ValueError(f"Tensor has {self.data.ndim} dimensions, expected 1 or 2")
-    
-    @property
-    def T(self):
-        # TODO: fix this
-        return Tensor(self.data.T, requires_grad=self.requires_grad)
     
     @property
     def shape(self):
@@ -151,17 +182,7 @@ class Tensor:
         return self + other
     
     def __iadd__(self, other):
-        # raise NotImplementedError("Not implemented")
-        if isinstance(other, Tensor):
-            if self.data.shape != other.data.shape:
-                raise ValueError(f"In-place add shape mismatch: {self.data.shape} vs {other.data.shape}")
-            self.data += other.data
-        else:
-            # Allow scalar add only
-            if xp.asarray(other).ndim != 0:
-                raise ValueError("In-place add only supports scalar non-Tensor values")
-            self.data += other
-        return self
+        raise NotImplementedError("Not implemented")
     
     def astype(self, dtype):
         # Edits type in place
@@ -191,13 +212,26 @@ class Tensor:
         return out
     
     def __matmul__(self, other):
+        if not isinstance(other, Tensor):
+            other = Tensor(other, requires_grad=False)      
+        
+        # if other.data.ndim != 2:
+        #     raise ValueError("Matmul requires other to be a 2D tensor")
+        # if self.data.ndim < 2:
+        #     raise ValueError("Matmul requires self to be at least 2D")
+        
         out = Tensor(xp.matmul(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad)
         if out.requires_grad:
             out.parents = (self, other)
             def grad_fn(grad):
+                def safe_transpose(x):
+                    if x.ndim < 2:
+                        return x
+                    return xp.swapaxes(x, -1, -2)
+
                 grad.requires_grad = False
-                other_T = xp.swapaxes(other.data, -1, -2)
-                self_T  = xp.swapaxes(self.data,  -1, -2)
+                other_T = safe_transpose(other.data)
+                self_T  = safe_transpose(self.data)
 
                 # For grad_self: grad @ other_T
                 grad_self = xp.matmul(grad.data, other_T)
@@ -251,10 +285,11 @@ class Tensor:
     
     def __isub__(self, other):
         raise NotImplementedError("Not implemented")
-        self.data -= other.data if isinstance(other, Tensor) else other
-        return self
     
     def __pow__(self, other):
+        if not isinstance(other, (int, float)):
+            raise NotImplementedError("Power must be a scalar")
+        
         out = Tensor(xp.power(self.data, other), requires_grad=self.requires_grad)
         if out.requires_grad:
             out.parents = (self,)
@@ -358,6 +393,12 @@ class Tensor:
             other = Tensor(other, requires_grad=False)
         return other.__truediv__(self)
     
+    def __idiv__(self, other):
+        raise NotImplementedError("Not implemented")
+    
+    def __itruediv__(self, other):
+        raise NotImplementedError("Not implemented")
+
     def exp(self):
         out = Tensor(xp.exp(self.data), requires_grad=self.requires_grad)
         if out.requires_grad:
@@ -443,8 +484,12 @@ class Tensor:
             def grad_fn(grad):
                 grad.requires_grad = False
                 u = xp.sqrt(2 / xp.pi) * (self.data + 0.044715 * xp.power(self.data, 3))
-                grad_self = grad.data * (0.5 * (1 + xp.tanh(u)) + self.data * (1 - xp.power(xp.tanh(u), 2)) * (xp.sqrt(2 / xp.pi) + 0.044715 * 3 * xp.power(self.data, 2)))
+                tanh_u = xp.tanh(u)
+                left = 0.5 * (1 + tanh_u)
+                right = 0.5 * self.data * (1 - tanh_u ** 2) * xp.sqrt(2 / xp.pi) * (1 + 3 * 0.044715 * xp.power(self.data, 2))
+                grad_self = grad.data * (left + right)
                 return (Tensor(grad_self, requires_grad=False),)
+
             out.grad_fn = grad_fn
         return out
     
@@ -463,35 +508,24 @@ class Tensor:
 
         return out
 
-    def backward(self, grad=None, _visited=None):
+    def backward(self, grad=None):
         if not self.requires_grad:
             return
 
         if grad is None:
             grad = Tensor(xp.ones_like(self.data), requires_grad=False)
 
-        if _visited is None:
-            _visited = {}
-
-        if self not in _visited:
-            _visited[self] = grad
+        # Accumulate gradient at this tensor
+        if self.grad is None:
+            self.grad = grad
         else:
-            _visited[self] += grad
-            return
+            self.grad.data += grad.data
 
-        # store the total gradient
-        self.grad = _visited[self]
-
-        # propagate once to each parent
-        if self.grad_fn is not None:
-            parents_local = self.parents
-            grads = self.grad_fn(self.grad)
-
-            self.grad_fn = None
-            self.parents = ()
-
-            for parent, g in zip(parents_local, grads):
-                parent.backward(g, _visited)
+        # Propagate this incoming gradient contribution to parents
+        if self.grad_fn is not None and self.parents:
+            grads = self.grad_fn(grad)
+            for parent, g in zip(self.parents, grads):
+                parent.backward(g)
         
     def zero_grad(self):
         self.grad = None

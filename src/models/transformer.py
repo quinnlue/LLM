@@ -45,7 +45,6 @@ class Transformer(Module):
         kt = k.transpose((0, 1, 3, 2))
 
         atten_scores = q @ kt * (1 / (self.d_head ** 0.5))
-        # Masking
         # TODO: remove hard coded float32
         casual_mask = xp.triu(xp.ones((T, T)) * -xp.inf, k=1).astype(xp.float32)
         atten_scores = atten_scores + casual_mask
@@ -63,7 +62,6 @@ class Transformer(Module):
         return output
     
     def forward(self, x: Tensor):
-        # Pre-attention LN
         B, T, _ = x.shape
 
         residual = x
@@ -71,7 +69,7 @@ class Transformer(Module):
 
         atten_out = self.attend(x)
 
-        x = residual + atten_out
+        x = atten_out + residual
 
         # MLP
         residual = x
@@ -83,7 +81,7 @@ class Transformer(Module):
 
         x_mlp = self.proj_down(x_mlp)
 
-        x = residual + x_mlp
+        x = x_mlp + residual
 
         return x
     
