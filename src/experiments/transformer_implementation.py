@@ -79,7 +79,7 @@ class Net(Module):
             dfs(t)
             return len(seen)
         
-        for epoch in range(1):
+        for epoch in range(1000):
             # Inputs to training step
             B, T = x.shape if hasattr(x, "shape") else (None, None)
 
@@ -90,7 +90,6 @@ class Net(Module):
             # Loss expects axis=-1 over vocab
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
 
-            print(graph_size(loss))
     
             loss.backward()
             optimizer.step()
