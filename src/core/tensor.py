@@ -514,13 +514,13 @@ class Tensor:
 
         return out
 
-    def backward(self, grad=None):
+    def backward(self, grad=None, seen=None):
         if seen is None:
             seen = set()
         if id(self) in seen:
             return
         seen.add(id(self))
-        
+
         if not self.requires_grad:
             return
 
