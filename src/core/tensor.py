@@ -2,8 +2,14 @@ from src.utils.backend import xp
 
 class Tensor:
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
-        # TODO: remove force to float32
-        self.data = xp.array(data).astype(xp.float32)
+        if isinstance(data, xp.ndarray):
+            # keep the same buffer whenever possible
+            if data.dtype == dtype:
+                self.data = data
+            else:
+                self.data = data.astype(dtype, copy=False)
+        else:
+            self.data = xp.array(data, dtype=dtype, copy=False)
         self.requires_grad = requires_grad
         self.parents = ()
         self.grad_fn = None

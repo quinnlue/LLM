@@ -100,7 +100,7 @@ class Model(Module):
     ):
         last_cp_time = time.perf_counter()
         loss_history = []
-        data = np.load("src/training/first_batch.npy")
+        data = np.load("first_batch.npy")
         for epoch in range(100):
             y_hat = self.forward(data[:,:-1])
             loss = CrossEntropyWithLogits(y_hat, data[:,1:])
