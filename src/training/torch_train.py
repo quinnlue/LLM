@@ -206,7 +206,7 @@ if __name__ == "__main__":
     for epoch in range(100):
         epoch_loss = []
         # for batch in tqdm(train_dl, desc=f"Epoch {epoch}", position=0, leave=True):
-        batch = np.load("src/training/first_batch.npy")
+        batch = np.load("first_batch.npy")
         if True:
             batch_t = xp_to_torch(batch)               # (B, S)
             inp, tgt = batch_t[:, :-1], batch_t[:, 1:]
