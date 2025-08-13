@@ -99,7 +99,7 @@ class Net(Module):
 if __name__ == "__main__":
     D_MODEL = 512
     VOCAB_SIZE = len(tokenizer.get_vocab())
-    N_HEADS = 12
+    N_HEADS = 8
     MAX_SEQ_LEN = 512
     EXPECTED_OPTIM_STEPS = 20_000
     WARMUP_STEPS = 200
