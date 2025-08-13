@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 
-src = np.random.randint(0,47999, size=(16, 512))
+src = np.random.randint(0,16, size=(16, 512))
 x = src[:, :-1]
 y = src[:, 1:]
 
@@ -39,12 +39,12 @@ class Net(Module):
 
         self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head6 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head7 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head8 = self.transformer(d_model=d_model, n_heads=n_heads)
         self.project = self.linear(d_model, vocab_size, name="project")
     
     def forward(self, idx):
@@ -57,12 +57,12 @@ class Net(Module):
         # Transformer blocks (residual-preserving shape)
         x = self.head1(x)
         x = self.head2(x)
-        # x = self.head3(x)
-        # x = self.head4(x)
-        # x = self.head5(x)
-        # x = self.head6(x)
-        # x = self.head7(x)
-        # x = self.head8(x)
+        x = self.head3(x)
+        x = self.head4(x)
+        x = self.head5(x)
+        x = self.head6(x)
+        x = self.head7(x)
+        x = self.head8(x)
 
         # Final projection to vocabulary logits
         x = self.project(x)
@@ -80,9 +80,6 @@ class Net(Module):
             return len(seen)
         
         for epoch in range(1000):
-            # Inputs to training step
-            B, T = x.shape if hasattr(x, "shape") else (None, None)
-
             y_hat = self.forward(x)
 
             # Expect logits for each position and vocab
@@ -98,10 +95,11 @@ class Net(Module):
             if epoch % 1 == 0:
                 print(f"Loss: {loss.data}")
 
+
 if __name__ == "__main__":
-    D_MODEL = 256
+    D_MODEL = 768
     VOCAB_SIZE = len(tokenizer.get_vocab())
-    N_HEADS = 2
+    N_HEADS = 12
     MAX_SEQ_LEN = 512
     EXPECTED_OPTIM_STEPS = 20_000
     WARMUP_STEPS = 200
@@ -120,8 +118,8 @@ if __name__ == "__main__":
 
 
     model = Net(d_model=D_MODEL, n_heads=N_HEADS, vocab_size=VOCAB_SIZE, max_seq_len=MAX_SEQ_LEN)
-    model._build((15, 15))
-    optimizer = AdamW(model.parameters(), lr=scheduler, precision=(xp.float16, xp.float32), clip_norm=1.0)
+    model._build((1, 16, 512))
+    optimizer = AdamW(model.parameters(), lr=0.01, precision=(xp.float16, xp.float32), clip_norm=1.0)
 
 
     model.train(x, y, epochs=1000, optimizer=optimizer)

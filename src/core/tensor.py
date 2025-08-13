@@ -1,6 +1,7 @@
 from src.utils.backend import xp
 
 class Tensor:
+    count = 0
     def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
         if isinstance(data, xp.ndarray):
             # keep the same buffer whenever possible
@@ -514,24 +515,64 @@ class Tensor:
 
         return out
 
-    def backward(self, grad=None):
-        if not self.requires_grad:
-            return
+    # def backward(self, grad=None):
+    #     Tensor.count += 1
+    #     print(f"Tensor.count: {Tensor.count}")
+    #     if not self.requires_grad:
+    #         return
 
+    #     if grad is None:
+    #         grad = Tensor(xp.ones_like(self.data), requires_grad=False)
+
+    #     # Accumulate gradient at this tensor
+    #     if self.grad is None:
+    #         self.grad = grad
+    #     else:
+    #         self.grad.data += grad.data
+
+    #     # Propagate this incoming gradient contribution to parents
+    #     if self.grad_fn is not None and self.parents:
+    #         grads = self.grad_fn(grad)
+    #         for parent, g in zip(self.parents, grads):
+    #             parent.backward(g)
+
+    def backward(self, grad=None):
+        # 1) seed grad
         if grad is None:
             grad = Tensor(xp.ones_like(self.data), requires_grad=False)
+        self.grad = grad
 
-        # Accumulate gradient at this tensor
-        if self.grad is None:
-            self.grad = grad
-        else:
-            self.grad.data += grad.data
+        # 2) build reverse-topo order (each node visited once)
+        topo, visited = [], set()
 
-        # Propagate this incoming gradient contribution to parents
-        if self.grad_fn is not None and self.parents:
-            grads = self.grad_fn(grad)
-            for parent, g in zip(self.parents, grads):
-                parent.backward(g)
+        def build(v):
+            # use object identity for memoization; avoid __eq__ surprises
+            if id(v) in visited:
+                return
+            visited.add(id(v))
+            for p in getattr(v, "parents", ()):
+                if p is not v:  # guard self-loops
+                    build(p)
+            topo.append(v)
+
+        build(self)
+
+        # 3) propagate grads once per node
+        for v in reversed(topo):  # sink -> sources
+            if v.grad is None:
+                continue  # unreachable or zero grad
+            if v.grad_fn is None or not getattr(v, "parents", None):
+                continue
+
+            parent_grads = v.grad_fn(v.grad)  # returns list aligned with v.parents
+            for p, g in zip(v.parents, parent_grads):
+                if g is None:
+                    continue
+                if p.grad is None:
+                    p.grad = g
+                else:
+                    p.grad.data += g.data  # accumulate from multiple children
+
 
         
     def zero_grad(self):

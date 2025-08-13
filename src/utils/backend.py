@@ -1,6 +1,7 @@
 import torch
 import random
 try:
+    
     import cupy as xp
     if not xp.cuda.is_available():
         print("CUDA not available")
