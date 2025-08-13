@@ -191,6 +191,7 @@ class AdamW(Optimizer):
     def step(self):
         if self.clip_norm is not None:
             total_norm = self._get_total_norm()
+            print("Total norm: ", total_norm)
         else:
             total_norm = 1.0
 
@@ -230,7 +231,6 @@ class AdamW(Optimizer):
                 master_param_tensor.data = master_param_tensor.data - wd_lr * master_param_tensor.data
             # ----------------------------------------------------------
 
-            print("Total norm: ", self._get_total_norm())
 
             # Add numerical stability checks for mixed precision
             if xp.isnan(grad_data).any() or xp.isinf(grad_data).any():
