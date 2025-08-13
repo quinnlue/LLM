@@ -174,7 +174,7 @@ class TestAttend(unittest.TestCase):
 
             atten_out, atten_params = my_attend(x)
 
-            x = atten_out + residual.detach()
+            x = atten_out + residual
 
             # MLP
             residual = x
@@ -186,7 +186,7 @@ class TestAttend(unittest.TestCase):
 
             x_mlp = x_mlp @ proj_down_weight + proj_down_bias
 
-            x = x_mlp + residual.detach()
+            x = x_mlp + residual
 
             return x, [
                 *my_layernorm_params_1, 
@@ -209,7 +209,7 @@ class TestAttend(unittest.TestCase):
 
             atten_out, atten_params = pt_attend(x)
 
-            x = atten_out + residual.detach()
+            x = atten_out + residual
 
             # MLP
             residual = x

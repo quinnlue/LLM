@@ -224,6 +224,12 @@ class AdamW(Optimizer):
 
             grad_data = grad.data.astype(dtype)
 
+            # ---------- decoupled weight-decay (AdamW style) ----------
+            if self.weight_decay != 0.0:
+                wd_lr = self.get_lr(self.t + 1) * self.weight_decay
+                master_param_tensor.data = master_param_tensor.data - wd_lr * master_param_tensor.data
+            # ----------------------------------------------------------
+
             del grad
 
             # Add numerical stability checks for mixed precision
@@ -244,8 +250,13 @@ class AdamW(Optimizer):
             # if self.weight_decay != 0.0:
             #     master_param_tensor.data = master_param_tensor.data * (1 - self.get_lr(self.t + 1) * self.weight_decay)
 
-            master_param_tensor.data = master_param_tensor.data - self.get_lr(self.t + 1) * m_hat / (xp.sqrt(v_hat) + self.master_eps).clip(min=self.master_eps)
-
+            # gradient update (Adam)
+            master_param_tensor.data = (
+                master_param_tensor.data
+                - self.get_lr(self.t + 1)
+                * m_hat
+                / (xp.sqrt(v_hat) + self.master_eps).clip(min=self.master_eps)
+            )
 
             param['m_t'] = m_t
             param['v_t'] = v_t

@@ -23,7 +23,7 @@ class TransformerBlock(nn.Module):
         
         # MLP
         self.proj_up = nn.Linear(d_model, mlp_dim)
-        self.gelu = nn.GELU()
+        self.gelu = nn.GELU(approximate="tanh")
         self.proj_down = nn.Linear(mlp_dim, d_model)
 
     def forward(self, x):
@@ -54,12 +54,12 @@ class TransformerBlock(nn.Module):
         attn_output = attn_output.transpose(1, 2).reshape(B, T, C)  # concat heads
         
         attn_out = self.o(attn_output)
-        x = attn_out + x.detach()  # residual connection
+        x = attn_out + x  # residual connection
         
         x_norm2 = self.ln2(x)
         x_mlp = self.proj_up(x_norm2)
         x_mlp = self.gelu(x_mlp)
         mlp_out = self.proj_down(x_mlp)
-        x = mlp_out + x.detach()  # residual connection
+        x = mlp_out + x  # residual connection
         
         return x

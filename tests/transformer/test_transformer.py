@@ -47,13 +47,13 @@ class TorchTransformer(nn.Module):
 
 class TestTransformer(unittest.TestCase):
     # Model configuration
-    d_model = 16
+    d_model = 4
     n_heads = 2
     mlp_dim = d_model * 4
-    vocab_size = 10
+    vocab_size = 2
     # Test data
-    _data = xp.random.randn(1, 10, d_model).astype(xp.float32)
-    _tgt = xp.random.randint(0, 10, (1, 10)).astype(xp.int32)
+    _data = xp.random.randn(1, 2, d_model).astype(xp.float32)
+    _tgt = xp.random.randint(0, 2, (1, 2)).astype(xp.int32)
     data = Tensor(_data, requires_grad=False)
     tgt = Tensor(_tgt, requires_grad=False)
     data_pt = torch.tensor(_data, requires_grad=False, dtype=torch.float32)
@@ -84,8 +84,8 @@ class TestTransformer(unittest.TestCase):
         if me > atol:
             print(f"===================== FAILED ======================")
             print(f"ME: {me}")
-            # print(f"a: {a}")
-            # print(f"b: {b}")
+            print(f"a: {a}")
+            print(f"b: {b}")
             print(f"===================================================")
         self.assertTrue(me < atol)
 
@@ -302,7 +302,11 @@ class TestTransformer(unittest.TestCase):
     def test_transformer_backward(self):
         my_loss = CrossEntropyWithLogits(self.model.forward(self.data), self.tgt)
         my_loss.backward()
-        pt_loss = F.cross_entropy(self.model_pt(self.data_pt), self.tgt_pt)
+        pt_logits = self.model_pt(self.data_pt)          # (B, T, V)
+        pt_loss = F.cross_entropy(
+            pt_logits.reshape(-1, pt_logits.size(-1)),   # (B*T, V)
+            self.tgt_pt.reshape(-1),                     # (B*T,)
+        )
         pt_loss.backward()
         self.assertTrue(self.grads_are_equal())
 
