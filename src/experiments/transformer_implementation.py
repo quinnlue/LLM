@@ -79,6 +79,16 @@ class Net(Module):
         return x
 
     def train(self, x, y, epochs, optimizer):
+        def graph_size(t):
+            seen = set()
+            def dfs(node):
+                if id(node) in seen: return
+                seen.add(id(node))
+                for p in getattr(node, 'parents', ()):
+                    dfs(p)
+            dfs(t)
+            return len(seen)
+        
         for epoch in range(1):
             # Inputs to training step
             B, T = x.shape if hasattr(x, "shape") else (None, None)
@@ -89,6 +99,8 @@ class Net(Module):
 
             # Loss expects axis=-1 over vocab
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
+
+            print(graph_size(loss))
     
             loss.backward()
             optimizer.step()
@@ -96,7 +108,7 @@ class Net(Module):
             optimizer.zero_grad()
             if epoch % 1 == 0:
                 print(f"Loss: {loss.data}")
-                
+
 if __name__ == "__main__":
     D_MODEL = 768
     VOCAB_SIZE = len(tokenizer.get_vocab())
