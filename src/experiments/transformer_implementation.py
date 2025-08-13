@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 
-src = np.load("src/training/first_batch.npy") # this is of shape (16, 512)
+src = np.load("first_batch.npy") # this is of shape (16, 512)
 x = src[:, :-1]
 y = src[:, 1:]
 
