@@ -38,7 +38,7 @@ class Net(Module):
         self.e = self.embedding(vocab_size, d_model, max_seq_len, name="Embedding")
 
         self.head1 = self.transformer(d_model=d_model, n_heads=n_heads)
-        # self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
+        self.head2 = self.transformer(d_model=d_model, n_heads=n_heads)
         # self.head3 = self.transformer(d_model=d_model, n_heads=n_heads)
         # self.head4 = self.transformer(d_model=d_model, n_heads=n_heads)
         # self.head5 = self.transformer(d_model=d_model, n_heads=n_heads)
@@ -56,7 +56,7 @@ class Net(Module):
 
         # Transformer blocks (residual-preserving shape)
         x = self.head1(x)
-        # x = self.head2(x)
+        x = self.head2(x)
         # x = self.head3(x)
         # x = self.head4(x)
         # x = self.head5(x)
