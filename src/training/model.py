@@ -98,12 +98,22 @@ class Model(Module):
         optimizer: Optimizer,
         dl: DataLoader,
     ):
+        def graph_size(t):
+            seen = set()
+            def dfs(node):
+                if id(node) in seen: return
+                seen.add(id(node))
+                for p in getattr(node, 'parents', ()):
+                    dfs(p)
+            dfs(t)
+            return len(seen)
         last_cp_time = time.perf_counter()
         loss_history = []
         data = np.load("first_batch.npy")
         for epoch in range(100):
             y_hat = self.forward(data[:,:-1])
             loss = CrossEntropyWithLogits(y_hat, data[:,1:])
+            print(graph_size(loss))
             loss_history.append(float(loss.data))
             loss.backward()
             optimizer.step()

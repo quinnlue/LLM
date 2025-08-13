@@ -23,12 +23,12 @@ VAL_DIR    = r"data/validation"
 CHECKPOINT_DIR = r"checkpoints"
 
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 512
-N_HEADS = 8
+D_MODEL = 256
+N_HEADS = 4
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
 EOS_IDX = 1
-DEPTH = 4
+DEPTH = 2
 
 
 BATCH_SIZE = 180
@@ -193,6 +193,15 @@ if __name__ == "__main__":
     # ─── training loop ───
     global_step   = 0
     last_ckpt_time = time.perf_counter()
+    def count_autograd_nodes(tensor):
+        seen = set()
+        def dfs(fn):
+            if fn and fn not in seen:
+                seen.add(fn)
+                for next_fn, _ in fn.next_functions:
+                    dfs(next_fn)
+        dfs(tensor.grad_fn)
+        return len(seen)
 
     for epoch in range(100):
         epoch_loss = []
@@ -206,6 +215,7 @@ if __name__ == "__main__":
                 logits = model(inp)                    # (B, S-1, V)
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), tgt.reshape(-1))
                 loss = loss / MINI_BATCH_PER_STEP      # gradient accumulation if >1
+                print(count_autograd_nodes(loss))
 
             scaler.scale(loss).backward()
 
