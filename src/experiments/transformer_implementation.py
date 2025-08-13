@@ -33,17 +33,7 @@ class Net(Module):
         self.vocab_size = vocab_size
         self.max_seq_len = max_seq_len
 
-        # Shape-check utility that raises on mismatch
-        def _check_shape(name, actual, expected):
-            def _shape_of(obj):
-                try:
-                    return tuple(obj.shape)
-                except Exception:
-                    return None
-            actual_shape = _shape_of(actual)
-            if expected is not None and actual_shape != expected:
-                raise ValueError(f"Shape mismatch for {name}: expected {expected}, got {actual_shape}")
-        self._check_shape = _check_shape
+
 
         self.e = self.embedding(vocab_size, d_model, max_seq_len, name="Embedding")
 

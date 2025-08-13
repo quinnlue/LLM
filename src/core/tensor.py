@@ -515,6 +515,12 @@ class Tensor:
         return out
 
     def backward(self, grad=None):
+        if seen is None:
+            seen = set()
+        if id(self) in seen:
+            return
+        seen.add(id(self))
+        
         if not self.requires_grad:
             return
 
@@ -532,6 +538,7 @@ class Tensor:
             grads = self.grad_fn(grad)
             for parent, g in zip(self.parents, grads):
                 parent.backward(g)
+
         
     def zero_grad(self):
         self.grad = None
