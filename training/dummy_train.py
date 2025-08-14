@@ -6,19 +6,19 @@ import gc
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-import dlx
-from dlx import Tensor, Module, CrossEntropyWithLogits, AdamW, xp
+import dlx as dlx
+import dlx.nn as nn
+from dlx import Tensor, CrossEntropyWithLogits, AdamW, xp
 from torch.optim.lr_scheduler import LRScheduler
 
-
-D_MODEL = 16
+D_MODEL = 64
 N_HEADS = D_MODEL // 16
 VOCAB_SIZE = 20
 MAX_SEQ_LEN = 16
 PAD_IDX = 0
 EOS_IDX = 1
 
-class Test(Module):
+class Test(nn.Module):
     def __init__(self, d_model, n_heads, vocab_size, max_seq_len, pad_idx=0):
         super().__init__()
         self.e = self.embedding(vocab_size, d_model, max_seq_len, pad_idx)
@@ -34,34 +34,37 @@ class Test(Module):
         self.project = self.linear(d_model, vocab_size, module_type="linear", layer_type="linear", name="project")
     
     def forward(self, idx):
-        x, padding_mask = self.e.get_sentence_embedding(idx)
-        x = self.head1(x, padding_mask)
-        x = self.head2(x, padding_mask)
-        x = self.head3(x, padding_mask)
-        x = self.head4(x, padding_mask)
-        x = self.head5(x, padding_mask)
-        x = self.head6(x, padding_mask)
-        x = self.head7(x, padding_mask)
-        x = self.head8(x, padding_mask)
+        x = self.e.get_sentence_embedding(idx)
+        x = self.head1(x)
+        x = self.head2(x)
+        x = self.head3(x)
+        x = self.head4(x)
+        x = self.head5(x)
+        x = self.head6(x)
+        x = self.head7(x)
+        x = self.head8(x)
         x = self.project(x)
         return x
     
+    def set_pbar(self, pbar, epochs, mini_batch_idx, running_loss, grad_norm, loss_history):
+        
+        avg_10k = sum(loss_history[-10000:]) / 10000
+        avg_1k = sum(loss_history[-1000:]) / 1000
+        avg_100 = sum(loss_history[-100:]) / 100
+
     def train(self, x, y, epochs, optimizer):
-        for epoch in tqdm(range(epochs)):
+        loss_history = []
+        pbar = tqdm(range(epochs), desc=f"Training: {epochs} epochs | prev_loss: {prev_loss}")
+
+        for epoch in pbar:
             y_hat = self.forward(x)
-
             loss = CrossEntropyWithLogits(y_hat, y, axis=-1)
-
             loss.backward()
-
             optimizer.step()
-
             optimizer.zero_grad()
 
-
-            gc.collect()  # force Python GC
-
-            print(f"Loss: {loss.data}")
+            prev_loss = loss.data
+            pbar.set_description(f"Training: {epochs} epochs | prev_loss: {prev_loss:.4f}")
 
              
 

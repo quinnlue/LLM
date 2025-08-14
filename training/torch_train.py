@@ -12,7 +12,7 @@ import numpy as np
 from torch.cuda.amp import autocast, GradScaler
 
 # ────────────────────────── project deps ──────────────────────────
-import dlx
+import dlx as dlx
 from dlx import xp
 from dlx.utils import train_logger, val_logger
 from ..preprocess.dataloader import DataLoader            # yields xp-based batches
