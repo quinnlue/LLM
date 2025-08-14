@@ -1,0 +1,9 @@
+pandas
+numpy
+tokenizers
+tqdm
+
+[dev]
+pytest
+black
+flake8

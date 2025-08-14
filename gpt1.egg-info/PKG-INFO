@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: gpt1
+Version: 0.1.0
+Summary: A personal GPT-1 training project
+Author: Your Name
+Requires-Python: >=3.8
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: tokenizers
+Requires-Dist: tqdm
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Dynamic: author
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
