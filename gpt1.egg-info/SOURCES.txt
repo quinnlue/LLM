@@ -1,4 +1,3 @@
-README.md
 setup.py
 gpt1.egg-info/PKG-INFO
 gpt1.egg-info/SOURCES.txt
@@ -20,3 +19,4 @@ training/dummy_train.py
 training/model.py
 training/torch_train.py
 training/train.py
+training/training_utils.py

@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 import dlx as dlx
 from dlx import AdamW, xp
 from dlx.utils import LRScheduler
@@ -19,7 +15,7 @@ VAL_DIR = r"data/validation"
 TEST_DIR = r"data/test"
 
 CHECKPOINT_DIR = r"checkpoints"
-
+exit()
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 256
