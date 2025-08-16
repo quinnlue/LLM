@@ -11,13 +11,22 @@ from dlx.nn.losses import CrossEntropyWithLogits
 import time
 from tqdm import tqdm
 from gpt1.training.utils import ProgressBarManager
+from pathlib import Path
+
+# Resolve project root (directory that contains the *gpt1* package)
+_BASE_DIR = Path(__file__).resolve().parents[1]
 
 # PATHS ------------------------------
-TRAIN_DIR = r"data/train"
-VAL_DIR = r"data/validation"
-TEST_DIR = r"data/test"
+TRAIN_DIR = _BASE_DIR / "data" / "train"
+VAL_DIR = _BASE_DIR / "data" / "validation"
+TEST_DIR = _BASE_DIR / "data" / "test"
+CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
 
-CHECKPOINT_DIR = r"checkpoints"
+# Convert Path objects to str for downstream code that expects strings
+TRAIN_DIR = str(TRAIN_DIR)
+VAL_DIR = str(VAL_DIR)
+TEST_DIR = str(TEST_DIR)
+CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
@@ -61,7 +70,6 @@ train_dl = DataLoader(
 )
 
 print("Loading validation data...")
-
 val_dl = DataLoader(
     src_dir=VAL_DIR,
     src_column=DATA_COLUMN,
