@@ -18,8 +18,8 @@ class FlashMHA(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
 
-        self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)
-        self.out_proj = nn.Linear(d_model, d_model, bias=False)
+        self.qkv = nn.Linear(d_model, 3 * d_model)
+        self.out_proj = nn.Linear(d_model, d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: [batch, seq, d_model]
@@ -96,7 +96,7 @@ class Model(nn.Module):
             TransformerBlock(d_model=d_model, num_heads=n_heads, mlp_ratio=mlp_ratio)
             for _ in range(transformer_depth)
         ])
-        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
+        self.lm_head = nn.Linear(d_model, vocab_size)
 
         self.apply(self._init_weights)
 
