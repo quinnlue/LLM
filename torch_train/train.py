@@ -15,6 +15,7 @@ from tqdm import tqdm
 from gpt1.preprocess.dataloader import DataLoader
 from gpt1.tokenizer.tokenizer import tokenizer
 from .model import Model
+from dlx.utils.logger import train_logger, val_logger
 
 
 # Resolve project root (directory that contains the *gpt1* package)
@@ -40,7 +41,7 @@ DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 8
-BATCH_SIZE = 6
+BATCH_SIZE = 36
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
@@ -51,6 +52,7 @@ MIN_LR = 1e-5
 MAX_LR = 5e-4
 FINAL_LR = 1e-6
 CHECKPOINT_INTERVAL_SECONDS = 3600
+LOG_INTERVAL_STEPS = 100
 
 
 def build_cosine_lr(total_steps: int, warmup_steps: int, min_lr: float, max_lr: float, final_lr: float):
@@ -112,6 +114,7 @@ def main() -> None:
 
     start_time = time.perf_counter()
     last_cp_time = start_time
+    last_log_step = 0
 
     # Progress bar
     total_steps = EPOCHS * len(train_dl)
@@ -121,12 +124,15 @@ def main() -> None:
     model.train()
     global_step = 0
     accum = 0
+    iter_count = 0
     for epoch in range(EPOCHS):
         for batch in train_dl:
+            iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
             logits = model(batch[:, :-1])
             target = batch[:, 1:]
             loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
+            scaled_loss_value = float(loss.item() * MINI_BATCH_PER_STEP)
 
             loss.backward()
             accum += 1
@@ -140,11 +146,24 @@ def main() -> None:
                 global_step += 1
 
             # Update progress bar
-            pbar.set_postfix(loss=f"{loss.item() * MINI_BATCH_PER_STEP:.4f}", lr=f"{optimizer.param_groups[0]['lr']:.6f}")
+            pbar.set_postfix(loss=f"{scaled_loss_value:.4f}", lr=f"{optimizer.param_groups[0]['lr']:.6f}")
             pbar.update(1)
+
+            # Periodic training loss logging
+            if iter_count - last_log_step >= LOG_INTERVAL_STEPS:
+                train_logger.info(
+                    f"iter={iter_count} step={global_step} loss={scaled_loss_value:.6f} lr={optimizer.param_groups[0]['lr']:.8f}"
+                )
+                last_log_step = iter_count
 
             # Checkpointing
             if time.perf_counter() - last_cp_time > CHECKPOINT_INTERVAL_SECONDS:
+                # Validation before checkpoint
+                val_loss = model.evaluate(val_dl, device)
+                val_logger.info(
+                    f"iter={iter_count} step={global_step} val_loss={val_loss:.6f}"
+                )
+                pbar.set_postfix(loss=f"{scaled_loss_value:.4f}", val_loss=f"{val_loss:.4f}", lr=f"{optimizer.param_groups[0]['lr']:.6f}")
                 model.checkpoint(optimizer)
                 last_cp_time = time.perf_counter()
 
