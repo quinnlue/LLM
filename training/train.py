@@ -126,14 +126,15 @@ for epoch in range(EPOCHS):
     for batch_idx, batch in enumerate(train_dl):
         # Training step
         y_hat = model.forward(batch[:,:-1])
-        loss = criterion(y_hat, batch[:,1:])
+        loss = criterion(y_hat, batch[:,1:])/MINI_BATCH_PER_STEP
         
-        loss_value = float(loss.data)
+        loss_value = float(loss.data * MINI_BATCH_PER_STEP)
         
         loss.backward()
         
-        optimizer.step()
-        optimizer.zero_grad()
+        if (batch_idx + 1) % MINI_BATCH_PER_STEP == 0:
+            optimizer.step()
+            optimizer.zero_grad()
         
         # Update progress bar efficiently
         progress_manager.update_progress(loss_value, optimizer, pbar)
