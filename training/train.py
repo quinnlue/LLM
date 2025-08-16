@@ -124,22 +124,19 @@ pbar = tqdm(
 print("Training...")
 for epoch in range(EPOCHS):
     for batch_idx, batch in enumerate(train_dl):
-        print(f"Training batch {batch_idx} of {len(train_dl)}")
         # Training step
         y_hat = model.forward(batch[:,:-1])
         loss = criterion(y_hat, batch[:,1:])
         
         loss_value = float(loss.data)
         
-        print("Starting backward pass...")
         loss.backward()
         
-        print("Stepping optimizer...")
         optimizer.step()
         optimizer.zero_grad()
         
         # Update progress bar efficiently
-        progress_manager.update_progress(loss_value, optimizer.lr, pbar)
+        progress_manager.update_progress(loss_value, optimizer, pbar)
         
         # Checkpointing
         if time.perf_counter() - last_cp_time > CHECKPOINT_INTERVAL_SECONDS:

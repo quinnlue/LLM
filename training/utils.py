@@ -84,7 +84,7 @@ class ProgressBarManager:
         self.current_step = 0
         self.loss_tracker = RunningLossTracker()
     
-    def update_progress(self, loss_value: float, optimizer_lr: float, pbar) -> None:
+    def update_progress(self, loss_value: float, optimizer, pbar) -> None:
         """Update progress bar with current metrics"""
         self.current_step += 1
         self.loss_tracker.update(loss_value)
@@ -94,12 +94,15 @@ class ProgressBarManager:
         steps_per_sec = calculate_steps_per_sec(self.current_step, self.start_time)
         fraction = format_fraction(self.current_step, self.total_steps)
         
+        # Get current learning rate from optimizer
+        current_lr = optimizer.get_lr(optimizer.t)
+        
         # Update progress bar
         pbar.set_postfix(
             loss=f"{running_100_loss:.4f}",
             ema_1k=f"{running_1k_loss:.4f}",
             ema_10k=f"{running_10k_loss:.4f}",
-            lr=f"{optimizer_lr:.6f}",
+            lr=f"{current_lr:.6f}",
             speed=f"{steps_per_sec:.2f} it/s",
             frac=fraction
         )
