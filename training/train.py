@@ -102,6 +102,7 @@ optimizer = AdamW(
     clip_norm=1.0
 )
 
+print("Building criterion...")
 criterion = CrossEntropyWithLogits
 
 # TRAINING INFO VARS ------------------------------
@@ -109,6 +110,7 @@ start_time = time.perf_counter()
 last_cp_time = start_time
 
 # INITIALIZING PROGRESS BAR -----------------------
+print("Initializing progress bar...")
 total_steps = EPOCHS * len(train_dl)
 progress_manager = ProgressBarManager(total_steps, start_time)
 pbar = tqdm(
@@ -119,15 +121,20 @@ pbar = tqdm(
 )
 
 # TRAINING LOOP ------------------------------
+print("Training...")
 for epoch in range(EPOCHS):
     for batch_idx, batch in enumerate(train_dl):
+        print(f"Training batch {batch_idx} of {len(train_dl)}")
         # Training step
         y_hat = model.forward(batch[:,:-1])
         loss = criterion(y_hat, batch[:,1:])
         
         loss_value = float(loss.data)
         
+        print("Starting backward pass...")
         loss.backward()
+        
+        print("Stepping optimizer...")
         optimizer.step()
         optimizer.zero_grad()
         
