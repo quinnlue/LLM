@@ -1,10 +1,7 @@
 import pandas as pd
-import sys
 import os 
 from tqdm import tqdm
 import gc
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import dlx as dlx
 import dlx.nn as nn

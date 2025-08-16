@@ -8,7 +8,7 @@ Requires-Dist: pandas
 Requires-Dist: numpy
 Requires-Dist: tokenizers
 Requires-Dist: tqdm
-Requires-Dist: dlx
+Requires-Dist: dlx@ file://../dlx
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"

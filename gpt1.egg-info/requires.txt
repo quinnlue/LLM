@@ -2,7 +2,7 @@ pandas
 numpy
 tokenizers
 tqdm
-dlx
+dlx@ file://../dlx
 
 [dev]
 pytest

@@ -1,10 +1,7 @@
-import sys
 import os
 import ast
 import random
 import warnings
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import pandas as pd
 import dlx as dlx

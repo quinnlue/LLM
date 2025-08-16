@@ -1,6 +1,5 @@
-import sys, os, math, time
+import os, math, time
 from datetime import datetime
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # ────────────────────────── 3rd-party ──────────────────────────
 import torch

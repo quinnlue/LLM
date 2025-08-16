@@ -1,13 +1,16 @@
+import sys
+sys.path.append(r"gpt1")
+
 import dlx as dlx
 from dlx import AdamW, xp
 from dlx.utils import LRScheduler
-from ..preprocess.dataloader import DataLoader
-from ..tokenizer.tokenizer import tokenizer
-from .model import Model
+from gpt1.preprocess.dataloader import DataLoader
+from gpt1.tokenizer.tokenizer import tokenizer
+from gpt1.training.model import Model
 from dlx.nn.losses import CrossEntropyWithLogits
 import time
 from tqdm import tqdm
-from .training_utils import ProgressBarManager
+from gpt1.training.training_utils import ProgressBarManager
 
 # PATHS ------------------------------
 TRAIN_DIR = r"data/train"

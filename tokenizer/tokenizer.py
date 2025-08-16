@@ -1,8 +1,6 @@
 from tokenizers import Tokenizer
 
 import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 tokenizer = Tokenizer.from_file("gpt1/tokenizer/tokenizer.json")
 

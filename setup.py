@@ -16,8 +16,7 @@ setup(
         "numpy",
         "tokenizers",
         "tqdm",
-        "dlx",
-        # Add other dependencies as needed
+        "dlx @ file://../dlx",
     ],
     extras_require={
         "dev": [
