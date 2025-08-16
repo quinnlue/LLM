@@ -30,12 +30,12 @@ CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 256
-N_HEADS = 4
+D_MODEL = 768
+N_HEADS = 12
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
 EOS_IDX = 1
-DEPTH = 2
+DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 1
