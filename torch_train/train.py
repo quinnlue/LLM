@@ -16,6 +16,7 @@ from gpt1.preprocess.dataloader import DataLoader
 from gpt1.tokenizer.tokenizer import tokenizer
 from .model import Model
 from dlx.utils.logger import train_logger, val_logger
+from gpt1.training.utils import RunningLossTracker
 
 
 # Resolve project root (directory that contains the *gpt1* package)
@@ -41,13 +42,13 @@ DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 8
-BATCH_SIZE = 36
+BATCH_SIZE = 48
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
 EPOCHS = 1
-EXPECTED_OPTIM_STEPS = 20_000
-WARMUP_STEPS = 200
+EXPECTED_OPTIM_STEPS = 32_000
+WARMUP_STEPS = 320
 MIN_LR = 1e-5
 MAX_LR = 5e-4
 FINAL_LR = 1e-6
@@ -125,6 +126,7 @@ def main() -> None:
     global_step = 0
     accum = 0
     iter_count = 0
+    loss_tracker = RunningLossTracker()
     for epoch in range(EPOCHS):
         for batch in train_dl:
             iter_count += 1
@@ -146,7 +148,16 @@ def main() -> None:
                 global_step += 1
 
             # Update progress bar
-            pbar.set_postfix(loss=f"{scaled_loss_value:.4f}", lr=f"{optimizer.param_groups[0]['lr']:.6f}")
+            # Update running loss trackers in O(1)
+            loss_tracker.update(scaled_loss_value)
+            ema_100, ema_1k, ema_10k = loss_tracker.get_running_losses()
+            pbar.set_postfix(
+                loss=f"{scaled_loss_value:.4f}",
+                ema_100=f"{ema_100:.4f}",
+                ema_1k=f"{ema_1k:.4f}",
+                ema_10k=f"{ema_10k:.4f}",
+                lr=f"{optimizer.param_groups[0]['lr']:.6f}"
+            )
             pbar.update(1)
 
             # Periodic training loss logging
@@ -163,7 +174,15 @@ def main() -> None:
                 val_logger.info(
                     f"iter={iter_count} step={global_step} val_loss={val_loss:.6f}"
                 )
-                pbar.set_postfix(loss=f"{scaled_loss_value:.4f}", val_loss=f"{val_loss:.4f}", lr=f"{optimizer.param_groups[0]['lr']:.6f}")
+                ema_100, ema_1k, ema_10k = loss_tracker.get_running_losses()
+                pbar.set_postfix(
+                    loss=f"{scaled_loss_value:.4f}",
+                    ema_100=f"{ema_100:.4f}",
+                    ema_1k=f"{ema_1k:.4f}",
+                    ema_10k=f"{ema_10k:.4f}",
+                    val_loss=f"{val_loss:.4f}",
+                    lr=f"{optimizer.param_groups[0]['lr']:.6f}"
+                )
                 model.checkpoint(optimizer)
                 last_cp_time = time.perf_counter()
 
