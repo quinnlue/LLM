@@ -10,7 +10,7 @@ from gpt1.training.model import Model
 from dlx.nn.losses import CrossEntropyWithLogits
 import time
 from tqdm import tqdm
-from gpt1.training.training_utils import ProgressBarManager
+from gpt1.training.utils import ProgressBarManager
 
 # PATHS ------------------------------
 TRAIN_DIR = r"data/train"
@@ -18,7 +18,7 @@ VAL_DIR = r"data/validation"
 TEST_DIR = r"data/test"
 
 CHECKPOINT_DIR = r"checkpoints"
-exit()
+
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 256
@@ -51,7 +51,7 @@ scheduler = LRScheduler(
     final_lr=FINAL_LR
     )
 
-
+print("Loading train data...")
 train_dl = DataLoader(
     src_dir=TRAIN_DIR,
     src_column=DATA_COLUMN,
@@ -59,6 +59,8 @@ train_dl = DataLoader(
     shuffle_rows=True,
     shuffle_files=True,
 )
+
+print("Loading validation data...")
 
 val_dl = DataLoader(
     src_dir=VAL_DIR,
@@ -68,6 +70,7 @@ val_dl = DataLoader(
     shuffle_files=True,
 )
 
+print("Building model...")
 model = Model(
     vocab_size=VOCAB_SIZE,
     d_model=D_MODEL,
@@ -85,6 +88,7 @@ model = Model(
 
 model._build((1, MAX_SEQ_LEN))
 
+print("Building optimizer...")
 optimizer = AdamW(
     params=model.parameters(),
     lr=scheduler,
@@ -98,16 +102,9 @@ criterion = CrossEntropyWithLogits
 start_time = time.perf_counter()
 last_cp_time = start_time
 
-# Calculate total steps for progress tracking
+# INITIALIZING PROGRESS BAR -----------------------
 total_steps = EPOCHS * len(train_dl)
-
-# Initialize progress bar manager
 progress_manager = ProgressBarManager(total_steps, start_time)
-
-# TRAINING LOOP ------------------------------
-data = xp.load("first_batch.npy")
-
-# Create progress bar with proper formatting
 pbar = tqdm(
     total=total_steps,
     desc="Training",
@@ -115,6 +112,7 @@ pbar = tqdm(
     bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}'
 )
 
+# TRAINING LOOP ------------------------------
 for epoch in range(EPOCHS):
     for batch_idx, batch in enumerate(train_dl):
         # Training step

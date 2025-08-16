@@ -4,6 +4,8 @@ import dlx as dlx
 from dlx import xp, Tensor
 import numpy as np
 import random
+import pyarrow.parquet as pq
+import time
 
 is_cuda = xp.__name__ == "cupy"
 pin_memory = is_cuda
@@ -38,8 +40,12 @@ class DataLoader:
         if shuffle_files:
             random.shuffle(self.files)
 
-        self.src_column = src_column
+        # Pre-compute total number of batches across all files
         self.length = 0
+        for f in self.files:
+            num_rows = pq.ParquetFile(f).metadata.num_rows      # fast
+            self.length += num_rows // self.batch_size
+        self.src_column = src_column
 
     def __len__(self):
         return self.length
@@ -47,7 +53,6 @@ class DataLoader:
     def __iter__(self):
         for f in self.files:
             dataset = Dataset(f, self.src_column, self.batch_size, self.shuffle_rows)
-            self.length = int(len(dataset) * len(self.files))
             for batch in dataset:
                 yield batch
 
