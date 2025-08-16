@@ -14,7 +14,7 @@ class Dataset:
     def __init__(self, path, src, batch_size, shuffle_rows: bool = True):
         print("Loading dataset from " , path)
         df = pd.read_parquet(path)
-
+        print("Loaded dataset from " , path)
         if shuffle_rows:
             df = df.sample(frac=1).reset_index(drop=True)
 
@@ -41,10 +41,10 @@ class DataLoader:
             random.shuffle(self.files)
 
         # Pre-compute total number of batches across all files
-        self.length = 0
-        for f in self.files:
-            num_rows = pq.ParquetFile(f).metadata.num_rows      # fast
-            self.length += num_rows // self.batch_size
+        self.length = 913000
+        # for f in self.files:
+        #     num_rows = pq.ParquetFile(f).metadata.num_rows      # fast
+        #     self.length += num_rows // self.batch_size
         self.src_column = src_column
 
     def __len__(self):

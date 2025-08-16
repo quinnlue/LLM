@@ -94,8 +94,6 @@ model = Model(
     mini_batch_per_step=MINI_BATCH_PER_STEP,
 )
 
-model._build((1, MAX_SEQ_LEN))
-
 print("Building optimizer...")
 optimizer = AdamW(
     params=model.parameters(),
