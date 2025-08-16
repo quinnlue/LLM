@@ -39,7 +39,7 @@ DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 8
-BATCH_SIZE = 8
+BATCH_SIZE = 6
 DATA_COLUMN = "seq"
 BIN_COLUMN = "bin"
 
