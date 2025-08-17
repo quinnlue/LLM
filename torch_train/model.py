@@ -134,7 +134,7 @@ class Model(nn.Module):
         self.train()
         return float(sum(losses) / max(1, len(losses)))
 
-    def checkpoint(self, optimizer: torch.optim.Optimizer, scheduler: "torch.optim.lr_scheduler._LRScheduler | None" = None, *, keep_last: int = 3, min_free_gb: float = 1.0) -> None:
+    def checkpoint(self, optimizer: torch.optim.Optimizer, scheduler: "torch.optim.lr_scheduler._LRScheduler | None" = None, scaler: "torch.cuda.amp.GradScaler | None" = None, *, keep_last: int = 3, min_free_gb: float = 1.0) -> None:
         """Safely persist a training checkpoint.
 
         This implementation adds several safeguards over a raw ``torch.save``:
@@ -177,6 +177,7 @@ class Model(nn.Module):
                         "model": self.state_dict(),
                         "optimizer": optimizer.state_dict(),
                         **({"scheduler": scheduler.state_dict()} if scheduler is not None else {}),
+                        **({"scaler": scaler.state_dict()} if scaler is not None else {}),
                     },
                     tmp_fp.name,
                     _use_new_zipfile_serialization=True,

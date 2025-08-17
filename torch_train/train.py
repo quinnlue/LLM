@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
+from torch.cuda.amp import autocast, GradScaler
 from tqdm import tqdm
 
 from gpt1.preprocess.dataloader import DataLoader
@@ -127,11 +128,16 @@ def main() -> None:
         optimizer.load_state_dict(state["optimizer"])
         if "scheduler" in state:
             scheduler.load_state_dict(state["scheduler"])
+        if "scaler" in state:
+            scaler.load_state_dict(state["scaler"])
         print(f"[INFO] Resumed from checkpoint {latest}")
 
     _load_latest_checkpoint()
 
     criterion = nn.CrossEntropyLoss()
+    
+    # Initialize GradScaler for mixed precision training
+    scaler = GradScaler()
 
     start_time = time.perf_counter()
     last_cp_time = start_time
@@ -151,17 +157,25 @@ def main() -> None:
         for batch in train_dl:
             iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
-            logits = model(batch[:, :-1])
-            target = batch[:, 1:]
-            loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
-            scaled_loss_value = float(loss.item() * MINI_BATCH_PER_STEP)
+            
+            with autocast():
+                logits = model(batch[:, :-1])
+                target = batch[:, 1:]
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
+                scaled_loss_value = float(loss.item() * MINI_BATCH_PER_STEP)
 
-            loss.backward()
+            # Scale loss and backward pass
+            scaler.scale(loss).backward()
             accum += 1
 
             if accum % MINI_BATCH_PER_STEP == 0:
+                # Unscale gradients for gradient clipping
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                optimizer.step()
+                
+                # Optimizer step with scaler
+                scaler.step(optimizer)
+                scaler.update()
                 optimizer.zero_grad(set_to_none=True)
                 scheduler.step()
                 accum = 0
@@ -203,13 +217,13 @@ def main() -> None:
                     val_loss=f"{val_loss:.4f}",
                     lr=f"{optimizer.param_groups[0]['lr']:.6f}"
                 )
-                model.checkpoint(optimizer, scheduler)
+                model.checkpoint(optimizer, scheduler, scaler)
                 last_cp_time = time.perf_counter()
 
     pbar.close()
 
     # Final checkpoint
-    model.checkpoint(optimizer, scheduler)
+    model.checkpoint(optimizer, scheduler, scaler)
 
 
 if __name__ == "__main__":
