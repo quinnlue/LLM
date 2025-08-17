@@ -134,14 +134,80 @@ class Model(nn.Module):
         self.train()
         return float(sum(losses) / max(1, len(losses)))
 
-    def checkpoint(self, optimizer: torch.optim.Optimizer) -> None:
+    def checkpoint(self, optimizer: torch.optim.Optimizer, scheduler: "torch.optim.lr_scheduler._LRScheduler | None" = None, *, keep_last: int = 3, min_free_gb: float = 1.0) -> None:
+        """Safely persist a training checkpoint.
+
+        This implementation adds several safeguards over a raw ``torch.save``:
+        1. The checkpoint is first written to a *temporary* file and then atomically
+           moved into place.  This prevents partially-written files from being
+           picked up later if the job is interrupted or the disk becomes full.
+        2. If the target filesystem has less than ``min_free_gb`` gigabytes of
+           free space, the checkpoint is *skipped* to avoid training crashes.
+        3. Only the ``keep_last`` most recent checkpoint files are retained –
+           older ones are removed to limit disk usage.
+        """
         if self.checkpoint_dir is None:
-            return
+            return  # No checkpoint directory specified – silently skip.
+
+        import logging
+        import shutil
+        import tempfile
+
+        # Ensure the checkpoint directory exists.
         os.makedirs(self.checkpoint_dir, exist_ok=True)
-        cp_path = os.path.join(self.checkpoint_dir, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".pt")
-        torch.save({
-            "model": self.state_dict(),
-            "optimizer": optimizer.state_dict(),
-        }, cp_path)
+
+        # Safety: verify we still have enough free space left on the target drive.
+        free_bytes = shutil.disk_usage(self.checkpoint_dir).free
+        if free_bytes < min_free_gb * 1024 ** 3:
+            logging.warning(
+                "Skipping checkpoint – only %.2f GB free (minimum %.2f GB required)",
+                free_bytes / 1024 ** 3,
+                min_free_gb,
+            )
+            return
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        final_path = os.path.join(self.checkpoint_dir, f"{timestamp}.pt")
+
+        # Write to a temporary file first, then atomically move into place.
+        try:
+            with tempfile.NamedTemporaryFile(dir=self.checkpoint_dir, suffix=".tmp", delete=False) as tmp_fp:
+                torch.save(
+                    {
+                        "model": self.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                        **({"scheduler": scheduler.state_dict()} if scheduler is not None else {}),
+                    },
+                    tmp_fp.name,
+                    _use_new_zipfile_serialization=True,
+                )
+                tmp_fp.flush()
+                os.fsync(tmp_fp.fileno())
+
+            # Atomic move – ``replace`` works across POSIX & Windows (Python ≥3.3).
+            os.replace(tmp_fp.name, final_path)
+        except Exception as exc:
+            logging.exception("Failed to write checkpoint: %s", exc)
+            # Clean up the temporary file if it still exists.
+            try:
+                if os.path.exists(tmp_fp.name):
+                    os.remove(tmp_fp.name)
+            except Exception:  # noqa: BLE001 – best-effort cleanup.
+                pass
+            return
+
+        # House-keeping: delete older checkpoints, keep only the most recent ones.
+        try:
+            ckpts = sorted(
+                (p for p in os.listdir(self.checkpoint_dir) if p.endswith(".pt")),
+                key=lambda p: os.path.getmtime(os.path.join(self.checkpoint_dir, p)),
+            )
+            for old_ckpt in ckpts[:-keep_last]:
+                try:
+                    os.remove(os.path.join(self.checkpoint_dir, old_ckpt))
+                except Exception:
+                    logging.warning("Could not remove old checkpoint %s", old_ckpt)
+        except Exception as exc:
+            logging.warning("Checkpoint pruning failed: %s", exc)
 
 

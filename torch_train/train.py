@@ -111,6 +111,26 @@ def main() -> None:
         ),
     )
 
+    # --------------------------------------------------
+    # Resume from latest checkpoint if one exists
+    # --------------------------------------------------
+    def _load_latest_checkpoint() -> None:
+        if not os.path.isdir(CHECKPOINT_DIR):
+            return
+        ckpts = [f for f in os.listdir(CHECKPOINT_DIR) if f.endswith(".pt")]
+        if not ckpts:
+            return
+        latest = max(ckpts, key=lambda f: os.path.getmtime(os.path.join(CHECKPOINT_DIR, f)))
+        cp_path = os.path.join(CHECKPOINT_DIR, latest)
+        state = torch.load(cp_path, map_location=device)
+        model.load_state_dict(state["model"])
+        optimizer.load_state_dict(state["optimizer"])
+        if "scheduler" in state:
+            scheduler.load_state_dict(state["scheduler"])
+        print(f"[INFO] Resumed from checkpoint {latest}")
+
+    _load_latest_checkpoint()
+
     criterion = nn.CrossEntropyLoss()
 
     start_time = time.perf_counter()
@@ -183,13 +203,13 @@ def main() -> None:
                     val_loss=f"{val_loss:.4f}",
                     lr=f"{optimizer.param_groups[0]['lr']:.6f}"
                 )
-                model.checkpoint(optimizer)
+                model.checkpoint(optimizer, scheduler)
                 last_cp_time = time.perf_counter()
 
     pbar.close()
 
     # Final checkpoint
-    model.checkpoint(optimizer)
+    model.checkpoint(optimizer, scheduler)
 
 
 if __name__ == "__main__":
