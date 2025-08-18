@@ -112,6 +112,10 @@ def main() -> None:
         ),
     )
 
+    # Loss and GradScaler must be initialized before loading checkpoints
+    criterion = nn.CrossEntropyLoss()
+    scaler = GradScaler()
+
     # --------------------------------------------------
     # Resume from latest checkpoint if one exists
     # --------------------------------------------------
@@ -133,11 +137,6 @@ def main() -> None:
         print(f"[INFO] Resumed from checkpoint {latest}")
 
     _load_latest_checkpoint()
-
-    criterion = nn.CrossEntropyLoss()
-    
-    # Initialize GradScaler for mixed precision training
-    scaler = GradScaler()
 
     start_time = time.perf_counter()
     last_cp_time = start_time
@@ -228,5 +227,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
