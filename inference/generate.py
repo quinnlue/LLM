@@ -34,6 +34,15 @@ _BASE_DIR = Path(__file__).resolve().parents[1]
 _DEFAULT_CKPT_DIR = _BASE_DIR / "checkpoints"
 
 
+def _is_git_lfs_pointer(path: str | os.PathLike) -> bool:
+    try:
+        with open(path, "rt", encoding="utf-8", errors="ignore") as fp:
+            first_line = fp.readline().strip()
+        return first_line.startswith("version https://git-lfs.github.com/spec/v1")
+    except Exception:
+        return False
+
+
 def _resolve_latest_checkpoint(checkpoint_dir: str | os.PathLike) -> str:
     """Return path to the most recently modified `.pt` checkpoint in dir."""
     ckpt_dir = Path(checkpoint_dir)
@@ -42,7 +51,21 @@ def _resolve_latest_checkpoint(checkpoint_dir: str | os.PathLike) -> str:
     ckpt_files = [p for p in ckpt_dir.iterdir() if p.suffix == ".pt" and p.is_file()]
     if not ckpt_files:
         raise FileNotFoundError(f"No '.pt' files found in '{ckpt_dir}'.")
-    latest = max(ckpt_files, key=lambda p: p.stat().st_mtime)
+    # Prefer likely real checkpoints: not LFS pointers and reasonably large
+    def is_likely_real(fp: Path) -> bool:
+        try:
+            return (not _is_git_lfs_pointer(fp)) and (fp.stat().st_size > 1_000_000)
+        except Exception:
+            return False
+
+    real_ckpts = [p for p in ckpt_files if is_likely_real(p)]
+    candidates = real_ckpts if real_ckpts else [p for p in ckpt_files if not _is_git_lfs_pointer(p)] or ckpt_files
+    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    if _is_git_lfs_pointer(latest):
+        raise FileNotFoundError(
+            f"Checkpoint '{latest.name}' appears to be a Git LFS pointer. "
+            "Fetch LFS files with: git lfs install && git lfs fetch --all && git lfs checkout"
+        )
     return str(latest)
 
 
@@ -60,6 +83,11 @@ def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
         pad_idx=PAD_IDX,
     ).to(device)
 
+    if _is_git_lfs_pointer(ckpt_path):
+        raise FileNotFoundError(
+            f"Checkpoint '{ckpt_path}' appears to be a Git LFS pointer, not the actual file. "
+            "Run: git lfs install && git lfs fetch --all && git lfs checkout"
+        )
     # PyTorch 2.6 defaults weights_only=True which breaks generic checkpoints.
     # We explicitly opt into full unpickling for trusted local checkpoints.
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
