@@ -60,7 +60,9 @@ def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
         pad_idx=PAD_IDX,
     ).to(device)
 
-    ckpt = torch.load(ckpt_path, map_location=device)
+    # PyTorch 2.6 defaults weights_only=True which breaks generic checkpoints.
+    # We explicitly opt into full unpickling for trusted local checkpoints.
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     # Training saves with key "model"
     state_dict = ckpt.get("model", ckpt.get("model_state", None))
     if state_dict is None:
