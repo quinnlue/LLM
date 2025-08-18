@@ -55,7 +55,7 @@ def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
         vocab_size=VOCAB_SIZE,
         d_model=D_MODEL,
         n_heads=N_HEADS,
-        depth=DEPTH,
+        transformer_depth=DEPTH,
         max_seq_len=MAX_SEQ_LEN,
         pad_idx=PAD_IDX,
     ).to(device)
