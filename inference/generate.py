@@ -28,6 +28,18 @@ from gpt1.torch_train.train import (
 )
 from gpt1.torch_train.model import Model as TransformerLM
 from gpt1.tokenizer.tokenizer import tokenizer
+try:
+    # Ensure we have a suitable decoder to avoid artifacts like 'Ġ'/'Ċ'
+    from tokenizers import decoders as _tk_decoders  # type: ignore
+    if getattr(tokenizer, "decoder", None) is None:
+        # Heuristic: if the vocab contains 'Ġ' markers, prefer ByteLevel decoder
+        vocab_sample = "".join(list(tokenizer.get_vocab().keys())[:2000])
+        if "\u0120" in vocab_sample:  # 'Ġ'
+            tokenizer.decoder = _tk_decoders.ByteLevel()
+        else:
+            tokenizer.decoder = _tk_decoders.BPE()
+except Exception:
+    pass
 
 # ────────────────────────── helpers ────────────────────────────────────────────
 _BASE_DIR = Path(__file__).resolve().parents[1]
@@ -90,6 +102,7 @@ def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
         )
     # PyTorch 2.6 defaults weights_only=True which breaks generic checkpoints.
     # We explicitly opt into full unpickling for trusted local checkpoints.
+    print(f"Loading checkpoint from {ckpt_path} …")
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     # Training saves with key "model"
     state_dict = ckpt.get("model", ckpt.get("model_state", None))
@@ -143,7 +156,18 @@ def generate(
         if eos_id is not None and next_id.item() == eos_id:
             break
 
-    return tokenizer.decode(ids.squeeze(0).tolist())
+    def _clean_decoded_text(text: str) -> str:
+        # Handle common GPT2/Roberta BPE artifacts if tokenizer decoder isn't configured
+        if "\u0120" in text:  # 'Ġ' indicates a space prefix in some vocabs
+            text = text.replace("\u0120", " ")
+        if "\u010a" in text:  # 'Ċ' often used for newlines
+            text = text.replace("\u010a", "\n")
+        # Normalize multiple spaces introduced by replacements
+        text = " ".join(text.split())
+        return text
+
+    decoded = tokenizer.decode(ids.squeeze(0).tolist(), skip_special_tokens=True)
+    return _clean_decoded_text(decoded)
 
 
 # ────────────────────────── CLI ────────────────────────────────────────────────
