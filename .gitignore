@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Parquet files
+*.parquet
+
+# PyTorch model files
+*.pt
+*.pth
+
