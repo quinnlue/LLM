@@ -28,6 +28,13 @@ from gpt1.torch_train.train import (
 )
 from gpt1.torch_train.model import Model as TransformerLM
 from gpt1.tokenizer.tokenizer import tokenizer
+
+s = "Once upon a time, there was a test."
+ids = tokenizer.encode(s).ids
+print("ids[:20] =", ids[:20])
+print("roundtrip:", tokenizer.decode(ids, skip_special_tokens=True))
+
+exit()
 try:
     # Ensure we have a suitable decoder to avoid artifacts like 'Ġ'/'Ċ'
     from tokenizers import decoders as _tk_decoders  # type: ignore
@@ -119,7 +126,7 @@ def generate(
     prompt: str,
     device: torch.device,
     max_new_tokens: int = 100,
-    temperature: float = 1.0,
+    temperature: float = 0.6,
     top_k: int | None = None,
 ) -> str:
     """
