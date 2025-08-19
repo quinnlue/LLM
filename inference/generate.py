@@ -21,6 +21,7 @@ import os
 import sys
 from pathlib import Path
 import torch
+import pandas as pd
 
 # ─── project deps ──────────────────────────────────────────────────────────────
 from gpt1.torch_train.train import (
@@ -29,8 +30,8 @@ from gpt1.torch_train.train import (
 from gpt1.torch_train.model import Model as TransformerLM
 from gpt1.tokenizer.tokenizer import tokenizer
 
-s = "Once upon a time, there was a test."
-ids = tokenizer.encode(s).ids
+df = pd.read_parquet("gpt1/data/validation.parquet")
+ids = [i for i in df.iloc[0]["seq"]]
 print("ids[:20] =", ids[:20])
 print("roundtrip:", tokenizer.decode(ids, skip_special_tokens=True))
 
