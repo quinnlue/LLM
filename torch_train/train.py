@@ -36,15 +36,15 @@ CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 1024
-N_HEADS = 16
+D_MODEL = 768
+N_HEADS = 12
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
-DEPTH = 18
+DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 4
-BATCH_SIZE = 48
+BATCH_SIZE = 64
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
@@ -99,18 +99,6 @@ def main() -> None:
         transformer_depth=DEPTH,
         checkpoint_dir=CHECKPOINT_DIR,
     ).to(device)
-
-    # Optimizer and scheduler
-    decay_params = []
-    no_decay_params = []
-
-    for name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue
-        if param.dim() == 1 or "bias" in name or "token_emb" in name or "pos_emb" in name:
-            no_decay_params.append(param)
-        else:
-            decay_params.append(param)
 
     optimizer = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.0)
 
