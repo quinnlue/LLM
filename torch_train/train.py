@@ -39,7 +39,7 @@ D_MODEL = 1024
 N_HEADS = 12
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
-DEPTH = 24
+DEPTH = 18
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 4
@@ -114,6 +114,14 @@ def main() -> None:
             no_decay_params.append(param)
         else:
             decay_params.append(param)
+    print("decay params:")
+    for param in decay_params:
+        print(name)
+    print("-" * 100)
+    print("no decay params:")
+    for param in no_decay_params:
+        print(name)
+    print("-" * 100)
 
     optimizer = optim.AdamW(
         [
