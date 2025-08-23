@@ -108,26 +108,14 @@ def main() -> None:
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-        # Do NOT apply weight decay to biases, LayerNorm/BatchNorm parameters (1-D tensors),
-        # token embeddings, or positional embeddings.
         if param.dim() == 1 or "bias" in name or "token_emb" in name or "pos_emb" in name:
             no_decay_params.append(param)
         else:
             decay_params.append(param)
-    print("decay params:")
-    for name, param in model.named_parameters():
-        if param in decay_params:
-            print(name)
-    print("-" * 100)
-    print("no decay params:")
-    for name, param in model.named_parameters():
-        if param in no_decay_params:
-            print(name)
-    print("-" * 100)
 
     optimizer = optim.AdamW(
         [
-            {"params": decay_params, "weight_decay": 0.01},
+            {"params": decay_params, "weight_decay": 0.003},
             {"params": no_decay_params, "weight_decay": 0.0},
         ],
         lr=MAX_LR,
