@@ -35,21 +35,23 @@ CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 768
+D_MODEL = 1024
 N_HEADS = 12
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
-DEPTH = 12
+DEPTH = 24
 
 # DATASET HYPERPARAMETERS ------------------------------
-MINI_BATCH_PER_STEP = 8
+MINI_BATCH_PER_STEP = 4
 BATCH_SIZE = 64
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
+TOTAL_TOKENS = 8_800_000_000
 EPOCHS = 1
-EXPECTED_OPTIM_STEPS = 32_000
-WARMUP_STEPS = 320
+_TOKENS_PER_STEP = BATCH_SIZE * MAX_SEQ_LEN * MINI_BATCH_PER_STEP
+EXPECTED_OPTIM_STEPS = TOTAL_TOKENS // _TOKENS_PER_STEP
+WARMUP_STEPS = EXPECTED_OPTIM_STEPS // 100 * 3
 MIN_LR = 1e-5
 MAX_LR = 5e-4
 FINAL_LR = 1e-6
@@ -100,7 +102,26 @@ def main() -> None:
     ).to(device)
 
     # Optimizer and scheduler
-    optimizer = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.1)
+    decay_params = []
+    no_decay_params = []
+
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        # Do NOT apply weight decay to biases, LayerNorm/BatchNorm parameters (1-D tensors),
+        # token embeddings, or positional embeddings.
+        if param.dim() == 1 or "bias" in name or "token_emb" in name or "pos_emb" in name:
+            no_decay_params.append(param)
+        else:
+            decay_params.append(param)
+
+    optimizer = optim.AdamW(
+        [
+            {"params": decay_params, "weight_decay": 0.01},
+            {"params": no_decay_params, "weight_decay": 0.0},
+        ],
+        lr=MAX_LR,
+    )
     scheduler = LambdaLR(
         optimizer,
         lr_lambda=build_cosine_lr(

@@ -19,8 +19,6 @@ class Dataset:
             df = df.sample(frac=1).reset_index(drop=True)
 
         self.src = np.stack(df[src].values)
-        self.x = self.src[:, :-1]
-        self.y = self.src[:, 1:]
         self.batch_size = batch_size
 
     def __len__(self):
@@ -28,7 +26,7 @@ class Dataset:
     
     def __iter__(self):
         for i in range(0, len(self.src), self.batch_size):
-            yield self.x[i:i+self.batch_size]
+            yield self.src[i:i+self.batch_size]
 
 
 
