@@ -115,12 +115,14 @@ def main() -> None:
         else:
             decay_params.append(param)
     print("decay params:")
-    for param in decay_params:
-        print(name)
+    for name, param in model.named_parameters():
+        if param in decay_params:
+            print(name)
     print("-" * 100)
     print("no decay params:")
-    for param in no_decay_params:
-        print(name)
+    for name, param in model.named_parameters():
+        if param in no_decay_params:
+            print(name)
     print("-" * 100)
 
     optimizer = optim.AdamW(
