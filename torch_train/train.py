@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import time
 from datetime import datetime
+import math
 
 import torch
 import torch.nn as nn
@@ -52,6 +53,7 @@ EPOCHS = 1
 _TOKENS_PER_STEP = BATCH_SIZE * MAX_SEQ_LEN * MINI_BATCH_PER_STEP
 EXPECTED_OPTIM_STEPS = TOTAL_TOKENS // _TOKENS_PER_STEP
 WARMUP_STEPS = EXPECTED_OPTIM_STEPS // 100 * 3
+PLATEAU_STEPS = EXPECTED_OPTIM_STEPS // 4
 MIN_LR = 1e-5
 MAX_LR = 5e-4
 FINAL_LR = 1e-6
@@ -59,15 +61,17 @@ CHECKPOINT_INTERVAL_SECONDS = 3600
 LOG_INTERVAL_STEPS = 100
 
 
-def build_cosine_lr(total_steps: int, warmup_steps: int, min_lr: float, max_lr: float, final_lr: float):
+def build_cosine_lr(total_steps: int, warmup_steps: int, plateau_steps: int, min_lr: float, max_lr: float, final_lr: float):
     def lr_lambda(step: int):
         if step < warmup_steps:
-            return (step + 1) / max(1, warmup_steps)
-        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
-        # cosine decay from 1.0 to final_lr/max_lr
-        cosine = 0.5 * (1.0 + torch.cos(torch.tensor(progress * 3.1415926535)))
-        scale = cosine * (1.0 - final_lr / max_lr) + (final_lr / max_lr)
-        return float(scale)
+            return (step + 1) / warmup_steps
+        elif step < plateau_steps:
+            return 1.0
+        else:
+            progress = (step - plateau_steps) / (total_steps - plateau_steps)
+            cosine = 0.5 * (1 + math.cos(math.pi * progress))
+            scale = cosine * (1.0 - final_lr / max_lr) + (final_lr / max_lr)
+            return scale
     return lr_lambda
 
 
@@ -113,18 +117,14 @@ def main() -> None:
         else:
             decay_params.append(param)
 
-    optimizer = optim.AdamW(
-        [
-            {"params": decay_params, "weight_decay": 0.003},
-            {"params": no_decay_params, "weight_decay": 0.0},
-        ],
-        lr=MAX_LR,
-    )
+    optimizer = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.0)
+
     scheduler = LambdaLR(
         optimizer,
         lr_lambda=build_cosine_lr(
             total_steps=EXPECTED_OPTIM_STEPS,
             warmup_steps=WARMUP_STEPS,
+            plateau_steps=PLATEAU_STEPS,
             min_lr=MIN_LR,
             max_lr=MAX_LR,
             final_lr=FINAL_LR,
