@@ -30,12 +30,7 @@ from gpt1.torch_train.train import (
 from gpt1.torch_train.model import Model as TransformerLM
 from gpt1.tokenizer.tokenizer import tokenizer
 
-df = pd.read_parquet("gpt1/data/validation/validation.parquet")
-ids = [i for i in df.iloc[0]["seq"]]
-print("ids[:20] =", ids[:20])
-print("roundtrip:", tokenizer.decode(ids, skip_special_tokens=True))
 
-exit()
 try:
     # Ensure we have a suitable decoder to avoid artifacts like 'Ġ'/'Ċ'
     from tokenizers import decoders as _tk_decoders  # type: ignore

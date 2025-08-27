@@ -19,6 +19,7 @@ from gpt1.tokenizer.tokenizer import tokenizer
 from .model import Model
 from dlx.utils.logger import train_logger, val_logger
 from gpt1.training.utils import RunningLossTracker
+from gpt1.torch_train.utils import load_latest_checkpoint
 
 
 # Resolve project root (directory that contains the *gpt1* package)
@@ -119,24 +120,7 @@ def main() -> None:
     # --------------------------------------------------
     # Resume from latest checkpoint if one exists
     # --------------------------------------------------
-    def _load_latest_checkpoint() -> None:
-        if not os.path.isdir(CHECKPOINT_DIR):
-            return
-        ckpts = [f for f in os.listdir(CHECKPOINT_DIR) if f.endswith(".pt")]
-        if not ckpts:
-            return
-        latest = max(ckpts, key=lambda f: os.path.getmtime(os.path.join(CHECKPOINT_DIR, f)))
-        cp_path = os.path.join(CHECKPOINT_DIR, latest)
-        state = torch.load(cp_path, map_location=device)
-        model.load_state_dict(state["model"])
-        optimizer.load_state_dict(state["optimizer"])
-        if "scheduler" in state:
-            scheduler.load_state_dict(state["scheduler"])
-        if "scaler" in state:
-            scaler.load_state_dict(state["scaler"])
-        print(f"[INFO] Resumed from checkpoint {latest}")
-
-    _load_latest_checkpoint()
+    load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
 
     start_time = time.perf_counter()
     last_cp_time = start_time

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 
 class FlashMHA(nn.Module):
-    def __init__(self, d_model: int, num_heads: int):
+    def __init__(self, d_model: int, num_heads: int, lora: bool = False, lora_r: int = 16, lora_alpha: int = 16):
         super().__init__()
         if d_model % num_heads != 0:
             raise ValueError(f"d_model must be divisible by num_heads, got {d_model=} and {num_heads=}")
@@ -17,6 +17,18 @@ class FlashMHA(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
+        self.lora = lora
+
+        if self.lora:
+            self.q_lora_A = nn.Linear(d_model, lora_r, bias=False)
+            self.k_lora_A = nn.Linear(d_model, lora_r, bias=False)
+            self.v_lora_A = nn.Linear(d_model, lora_r, bias=False)
+            self.q_lora_B = nn.Linear(lora_r, d_model, bias=False)
+            self.k_lora_B = nn.Linear(lora_r, d_model, bias=False)
+            self.v_lora_B = nn.Linear(lora_r, d_model, bias=False)
+            self.o_lora_A = nn.Linear(d_model, lora_r, bias=False)
+            self.o_lora_B = nn.Linear(lora_r, d_model, bias=False)
+            self.scaling = lora_alpha / lora_r
 
         self.qkv = nn.Linear(d_model, 3 * d_model)
         self.out_proj = nn.Linear(d_model, d_model)
@@ -26,6 +38,14 @@ class FlashMHA(nn.Module):
         batch_size, seq_len, _ = x.shape
         qkv = self.qkv(x)  # [B, T, 3 * D]
         q, k, v = qkv.split(self.d_model, dim=-1)
+
+        if self.lora:
+            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight @ self.q_lora_B.weight)
+            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight @ self.k_lora_B.weight)
+            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight @ self.v_lora_B.weight)
+            q = q + q_lora_delta
+            k = k + k_lora_delta
+            v = v + v_lora_delta
 
         # Reshape to heads
         def shape_heads(t: torch.Tensor) -> torch.Tensor:
@@ -39,6 +59,8 @@ class FlashMHA(nn.Module):
         k = shape_heads(k)
         v = shape_heads(v)
 
+
+
         # Use PyTorch SDPA which dispatches to FlashAttention on supported GPUs/dtypes
         if x.is_cuda:
             with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=True):
@@ -48,15 +70,24 @@ class FlashMHA(nn.Module):
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
+        if self.lora:
+            attn_out = attn_out + self.scaling * (attn_out @ self.o_lora_A.weight @ self.o_lora_B.weight)
         return self.out_proj(attn_out)
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, d_model: int, num_heads: int, mlp_ratio: int = 4):
+    def __init__(self, d_model: int, num_heads: int, mlp_ratio: int = 4, lora: bool = False, lora_r: int = 16, lora_alpha: int = 16):
         super().__init__()
         self.ln1 = nn.LayerNorm(d_model)
-        self.attn = FlashMHA(d_model, num_heads)
+        self.attn = FlashMHA(d_model, num_heads, lora, lora_r, lora_alpha)
         self.ln2 = nn.LayerNorm(d_model)
+        if self.lora:
+            self.proj_up_lora_A = nn.Linear(d_model, lora_r, bias=False)
+            self.proj_up_lora_B = nn.Linear(lora_r, d_model * mlp_ratio, bias=False)
+            self.proj_down_lora_A = nn.Linear(d_model * mlp_ratio, lora_r, bias=False)
+            self.proj_down_lora_B = nn.Linear(lora_r, d_model, bias=False)
+            self.scaling = lora_alpha / lora_r
+
         self.mlp = nn.Sequential(
             nn.Linear(d_model, d_model * mlp_ratio),
             nn.GELU(),
@@ -65,7 +96,19 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.ln1(x))
-        x = x + self.mlp(self.ln2(x))
+        x = self.ln2(x)
+        if self.lora:
+            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight @ self.proj_up_lora_B.weight)
+            proj_up = self.mlp[0](x) + proj_up_lora_delta
+
+            activated = self.mlp[1](proj_up)
+        
+            proj_down_lora_delta = self.scaling * (activated @ self.proj_down_lora_A.weight @ self.proj_down_lora_B.weight)
+            mlp_out = self.mlp[2](activated) + proj_down_lora_delta
+        else:
+            mlp_out = self.mlp(x)
+
+        x = x + mlp_out
         return x
 
 
@@ -80,6 +123,9 @@ class Model(nn.Module):
         transformer_depth: int,
         checkpoint_dir: Optional[str] = None,
         mlp_ratio: int = 4,
+        lora: bool = False,
+        lora_r: int = 16,
+        lora_alpha: int = 16,
     ) -> None:
         super().__init__()
         self.vocab_size = vocab_size
@@ -93,7 +139,7 @@ class Model(nn.Module):
         nn.init.normal_(self.pos_emb, mean=0.0, std=0.02)
 
         self.blocks = nn.ModuleList([
-            TransformerBlock(d_model=d_model, num_heads=n_heads, mlp_ratio=mlp_ratio)
+            TransformerBlock(d_model=d_model, num_heads=n_heads, mlp_ratio=mlp_ratio, lora=lora, lora_r=lora_r, lora_alpha=lora_alpha)
             for _ in range(transformer_depth)
         ])
         self.lm_head = nn.Linear(d_model, vocab_size)
