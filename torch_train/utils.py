@@ -30,8 +30,16 @@ def resize_token_embeddings(model, new_vocab_size: int, pad_idx: int = 0) -> Non
     old_lm_head_bias = model.lm_head.bias.data if model.lm_head.bias is not None else None
     
     # Create new embedding layer
-    new_token_emb = nn.Embedding(new_vocab_size, model.d_model, padding_idx=pad_idx)
-    new_lm_head = nn.Linear(model.d_model, new_vocab_size)
+    # Ensure the new layers are created on the same device (and dtype) as the existing model parameters
+    base_param: torch.Tensor = model.token_emb.weight
+    device = base_param.device
+    dtype = base_param.dtype
+
+    new_token_emb = (
+        nn.Embedding(new_vocab_size, model.d_model, padding_idx=pad_idx)
+        .to(device=device, dtype=dtype)
+    )
+    new_lm_head = nn.Linear(model.d_model, new_vocab_size).to(device=device, dtype=dtype)
     
     # Initialize new weights with normal distribution (same as model's _init_weights)
     nn.init.normal_(new_token_emb.weight, mean=0.0, std=0.02)
