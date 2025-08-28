@@ -103,7 +103,7 @@ if __name__ == "__main__":
         lora=True,
         lora_r=R,
         lora_alpha=ALPHA,
-    ).to(device)
+    ).to(device)  # Move model to device FIRST
     print("initialized model")
 
 
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     scaler = GradScaler()
     print("initialized scaler")
 
+    # Load checkpoint AFTER model is on device
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
     print("loaded latest checkpoint")
 
