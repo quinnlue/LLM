@@ -34,27 +34,32 @@ from gpt1.torch_train.train import (
     CHECKPOINT_INTERVAL_SECONDS,
 )
 
+import torch
+from torch.utils.data import Dataset
+import pandas as pd
+import numpy as np
+
 class SFTDataset(Dataset):
     def __init__(self, data_path: str, max_seq_len: int, data_column: str, mask_column: str):
-        self.data = pd.read_parquet(data_path)
-        self.data_column = data_column
-        self.mask_column = mask_column
+        df = pd.read_parquet(data_path)
+        
+        # stack all sequences into one big NumPy array
+        self.x_data = np.stack([s[:,:-1] for s in df[data_column].values])
+        self.y_data = np.stack([s[:,1:] for s in df[data_column].values])
+        self.masks = np.stack(df[mask_column].values)
+
+        # convert once to torch tensors if you want
+        self.x_data = torch.from_numpy(self.x_data).long()
+        self.y_data = torch.from_numpy(self.y_data).long()
+        self.masks = torch.from_numpy(self.masks).bool()
 
     def __len__(self):
-        return len(self.data)
+        return len(self.x_data)
 
     def __getitem__(self, idx):
-        src = self.data[self.data_column].iloc[idx]
-        mask = self.data[self.mask_column].iloc[idx]
+        # slice preloaded tensors
+        return self.x_data[idx], self.y_data[idx], self.masks[idx]
 
-        x = src[:,:-1]
-        y = src[:,1:]
-
-        x = torch.tensor(x, dtype=torch.long).requires_grad_(False)
-        y = torch.tensor(y, dtype=torch.long).requires_grad_(False)
-        mask = torch.tensor(mask, dtype=torch.bool).requires_grad_(False)
-
-        return x, y, mask
         
 
 R = 8
