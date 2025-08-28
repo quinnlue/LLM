@@ -150,12 +150,16 @@ if __name__ == "__main__":
     for epoch in range(EPOCHS):
         for batch in train_loader:
             iter_count += 1
-            batch = torch.as_tensor(batch, dtype=torch.long, device=device)
+            # Unpack the batch tuple (x_data, y_data, masks)
+            x_data, y_data, masks = batch
+            x_data = x_data.to(device)
+            y_data = y_data.to(device)
+            masks = masks.to(device)
             
             with autocast():
-                logits = model(batch[:, :-1])
-                target = batch[:, 1:]
-                loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1))
+                logits = model(x_data)
+                # Apply mask to loss calculation
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1))
                 scaled_loss_value = float(loss.item())
 
             # Scale loss and backward pass
