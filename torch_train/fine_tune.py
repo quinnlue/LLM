@@ -43,15 +43,28 @@ class SFTDataset(Dataset):
     def __init__(self, data_path: str, max_seq_len: int, data_column: str, mask_column: str):
         df = pd.read_parquet(data_path)
         
-        # stack all sequences into one big NumPy array
-        self.x_data = np.stack([s[:,:-1] for s in df[data_column].values])
-        self.y_data = np.stack([s[:,1:] for s in df[data_column].values])
-        self.masks = np.stack(df[mask_column].values)
-
-        # convert once to torch tensors if you want
-        self.x_data = torch.from_numpy(self.x_data).long()
-        self.y_data = torch.from_numpy(self.y_data).long()
-        self.masks = torch.from_numpy(self.masks).bool()
+        # Convert lists to numpy arrays and create input/output pairs
+        self.x_data = []
+        self.y_data = []
+        self.masks = []
+        
+        for _, row in df.iterrows():
+            tokens = np.array(row[data_column])
+            mask = np.array(row[mask_column])
+            
+            # Create input (tokens[:-1]) and output (tokens[1:]) pairs
+            x_seq = tokens[:-1]  # all tokens except the last one
+            y_seq = tokens[1:]   # all tokens except the first one
+            mask_seq = mask[:-1] # mask for input sequence
+            
+            self.x_data.append(x_seq)
+            self.y_data.append(y_seq)
+            self.masks.append(mask_seq)
+        
+        # Convert to torch tensors
+        self.x_data = torch.tensor(self.x_data, dtype=torch.long)
+        self.y_data = torch.tensor(self.y_data, dtype=torch.long)
+        self.masks = torch.tensor(self.masks, dtype=torch.bool)
 
     def __len__(self):
         return len(self.x_data)
