@@ -71,7 +71,7 @@ class SFTDataset(Dataset):
 
     def __getitem__(self, idx):
         # slice preloaded tensors
-        return self.x_data[idx], self.y_data[idx], self.masks[idx]
+        return self.x_data[idx].to(device), self.y_data[idx].to(device), self.masks[idx].to(device)
 
         
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
     print("loaded latest checkpoint")
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
     print("initialized criterion")
 
     start_time = time.perf_counter()
@@ -153,14 +153,12 @@ if __name__ == "__main__":
             iter_count += 1
             # Unpack the batch tuple (x_data, y_data, masks)
             x_data, y_data, masks = batch
-            x_data = x_data.to(device)
-            y_data = y_data.to(device)
-            masks = masks.to(device)
+
             
             with autocast():
                 logits = model(x_data)
                 # Apply mask to loss calculation
-                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1))
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1), ignore_index=PAD_IDX,)
                 scaled_loss_value = float(loss.item())
 
             # Scale loss and backward pass
