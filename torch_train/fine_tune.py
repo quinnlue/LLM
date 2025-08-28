@@ -65,7 +65,7 @@ _BASE_DIR = Path(__file__).resolve().parents[1]
 # PATHS ------------------------------
 TRAIN_DIR = _BASE_DIR / "data" / "finetune" / "train.parquet"
 VAL_DIR = _BASE_DIR / "data" / "finetune" / "validation.parquet"
-CHECKPOINT_DIR = _BASE_DIR / "fine_tune" / "checkpoints"
+CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
