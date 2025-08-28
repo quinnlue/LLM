@@ -78,7 +78,7 @@ class SFTDataset(Dataset):
 
 R = 8
 ALPHA = R
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 
 EPOCHS = 3
 _BASE_DIR = Path(__file__).resolve().parents[1]
