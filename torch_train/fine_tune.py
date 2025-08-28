@@ -161,7 +161,7 @@ if __name__ == "__main__":
             with autocast(device_type='cuda'):
                 logits = model(x_data)
                 # Apply mask to loss calculation
-                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1), ignore_index=PAD_IDX,)
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1))
                 scaled_loss_value = float(loss.item())
 
             # Scale loss and backward pass
