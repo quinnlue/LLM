@@ -7,8 +7,7 @@ import time
 from datetime import datetime
 import math
 import pandas as pd
-from torch.utils.data import Dataset
-
+from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,7 +15,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.cuda.amp import autocast, GradScaler
 from tqdm import tqdm
 
-from gpt1.preprocess.dataloader import DataLoader
+
 from gpt1.tokenizer.tokenizer import tokenizer
 from gpt1.torch_train.model import Model
 from dlx.utils.logger import train_logger, val_logger
@@ -85,28 +84,33 @@ if __name__ == "__main__":
         lora_r=R,
         lora_alpha=ALPHA,
     ).to(device)
+    print("initialized model")
 
 
     train_dataset = SFTDataset(TRAIN_DIR, MAX_SEQ_LEN, "tokens", "mask")
     val_dataset = SFTDataset(VAL_DIR, MAX_SEQ_LEN, "tokens", "mask")
-
+    print("initialized datasets")
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, pin_memory=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False, pin_memory=True)
-
+    print("initialized dataloaders")
     lora_params = []
     for name, param in model.named_parameters():
         if "lora" in name:
             lora_params.append(param)
         else:
             param.requires_grad = False
-
+    print("initialized lora params")
     optimizer = optim.AdamW(lora_params, lr=1e-4)
+    print("initialized optimizer")
     scheduler = LambdaLR(optimizer, lr_lambda=lambda step: 1.0)
+    print("initialized scheduler")
     scaler = GradScaler()
+    print("initialized scaler")
 
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
-    print("all good loading model")
+    print("loaded latest checkpoint")
     exit()
+
     for epoch in range(EPOCHS):
         train_logger.info(f"Epoch {epoch+1}/{EPOCHS}")
         train_logger.info(f"Learning rate: {scheduler.get_last_lr()[0]}")
