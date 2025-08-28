@@ -79,34 +79,36 @@ def build_cosine_lr(total_steps: int, warmup_steps: int, max_lr: float, final_lr
 # ---------- dataset ----------------------------------------------------------
 class ParquetDataset(torch.utils.data.Dataset):
     """
-    Map-style dataset that pulls sequences from parquet shards.
-    Assumes each parquet file has a column ``src_column`` whose rows
-    are lists / np arrays of token IDs.
+    Map-style dataset over parquet shards, keeping at most *one* parquet file
+    (per DataLoader worker) resident in memory at any time.  This strikes a
+    balance between the original «open-per-row» behaviour and the previous
+    «load-everything» variant.
     """
-    def __init__(self, src_dir: str, src_column: str):
+
+    def __init__(self, src_dir: str, src_column: str, cache_size: int = 1):
         self.src_column = src_column
-        # Collect valid parquet files and compute cumulative row counts.
-        # We proactively validate each file so that corrupted or non-parquet
-        # files (which may have a *.parquet extension) are skipped instead of
-        # crashing at runtime when the first bad file is encountered.
-        self.files = []
-        self.cum_rows = []
+        self.cache_size = max(1, cache_size)  # positive cache size
+
+        # Discover shards and build cumulative row offsets
+        self.files: list[str] = []
+        self.cum_rows: list[int] = []
         total = 0
-        for fname in os.listdir(src_dir):
+
+        for fname in sorted(os.listdir(src_dir)):
             if not fname.endswith(".parquet"):
                 continue
+
             fp = os.path.join(src_dir, fname)
             try:
-                parquet_file = pq.ParquetFile(fp)
-                n_rows = parquet_file.metadata.num_rows
+                n_rows = pq.ParquetFile(fp).metadata.num_rows
             except (pq.lib.ArrowInvalid, OSError) as e:
-                # Skip files that are not valid parquet or are unreadable.
                 print(f"[ParquetDataset] WARNING: Skipping invalid parquet file '{fp}': {e}", file=sys.stderr)
                 continue
+
             if n_rows == 0:
-                # Empty shard – skip; avoids divide-by-zero issues later.
                 print(f"[ParquetDataset] WARNING: Skipping empty parquet file '{fp}'", file=sys.stderr)
                 continue
+
             self.files.append(fp)
             total += n_rows
             self.cum_rows.append(total)
@@ -116,11 +118,15 @@ class ParquetDataset(torch.utils.data.Dataset):
 
         self._len = total
 
-    def __len__(self) -> int:
+        # Simple LRU cache {file_path: DataFrame}
+        self._cache: dict[str, pd.DataFrame] = {}
+
+    # -------------------------------------------------- helper methods --------
+    def __len__(self) -> int:  # type: ignore[override]
         return self._len
 
     def _locate(self, idx: int) -> tuple[int, int]:
-        # binary search cumulative offsets → (file_idx, row_idx)
+        """Binary-search cumulative row counts → (file_idx, row_idx)"""
         lo, hi = 0, len(self.cum_rows) - 1
         while lo <= hi:
             mid = (lo + hi) // 2
@@ -132,9 +138,27 @@ class ParquetDataset(torch.utils.data.Dataset):
         prior = self.cum_rows[file_idx - 1] if file_idx else 0
         return file_idx, idx - prior
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def _get_df(self, file_idx: int) -> pd.DataFrame:
+        """Return cached DataFrame or load it if not present."""
+        fp = self.files[file_idx]
+
+        if fp in self._cache:
+            return self._cache[fp]
+
+        # Lazily load the shard; keep only *cache_size* shards in memory
+        df = pd.read_parquet(fp, columns=[self.src_column])
+
+        # Evict oldest entry if cache is full
+        if len(self._cache) >= self.cache_size:
+            self._cache.pop(next(iter(self._cache)))
+
+        self._cache[fp] = df
+        return df
+
+    # -------------------------------------------------- main API -------------
+    def __getitem__(self, idx: int) -> torch.Tensor:  # type: ignore[override]
         file_idx, row_idx = self._locate(idx)
-        df = pd.read_parquet(self.files[file_idx], columns=[self.src_column])
+        df = self._get_df(file_idx)
         seq = df.iloc[row_idx][self.src_column]
         return torch.as_tensor(seq, dtype=torch.long)
 # -----------------------------------------------------------------------------
