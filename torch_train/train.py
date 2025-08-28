@@ -6,20 +6,16 @@ from pathlib import Path
 import time
 from datetime import datetime
 import math
-import random
-import pandas as pd
-import pyarrow.parquet as pq
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
-# torch DataLoader replaces custom one
-from torch.utils.data import DataLoader as TorchDataLoader
+from gpt1.preprocess.dataloader import DataLoader
 from gpt1.tokenizer.tokenizer import tokenizer
 from .model import Model
 from dlx.utils.logger import train_logger, val_logger
@@ -43,7 +39,7 @@ CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 1024
-N_HEADS = 16                 # 1024 % 16 == 0
+N_HEADS = 16
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
 DEPTH = 12
@@ -76,121 +72,24 @@ def build_cosine_lr(total_steps: int, warmup_steps: int, max_lr: float, final_lr
     return lr_lambda
 
 
-# ---------- dataset ----------------------------------------------------------
-class ParquetDataset(torch.utils.data.Dataset):
-    """
-    Map-style dataset over parquet shards, keeping at most *one* parquet file
-    (per DataLoader worker) resident in memory at any time.  This strikes a
-    balance between the original «open-per-row» behaviour and the previous
-    «load-everything» variant.
-    """
-
-    def __init__(self, src_dir: str, src_column: str, cache_size: int = 1):
-        self.src_column = src_column
-        self.cache_size = max(1, cache_size)  # positive cache size
-
-        # Discover shards and build cumulative row offsets
-        self.files: list[str] = []
-        self.cum_rows: list[int] = []
-        total = 0
-
-        for fname in sorted(os.listdir(src_dir)):
-            if not fname.endswith(".parquet"):
-                continue
-
-            fp = os.path.join(src_dir, fname)
-            try:
-                n_rows = pq.ParquetFile(fp).metadata.num_rows
-            except (pq.lib.ArrowInvalid, OSError) as e:
-                print(f"[ParquetDataset] WARNING: Skipping invalid parquet file '{fp}': {e}", file=sys.stderr)
-                continue
-
-            if n_rows == 0:
-                print(f"[ParquetDataset] WARNING: Skipping empty parquet file '{fp}'", file=sys.stderr)
-                continue
-
-            self.files.append(fp)
-            total += n_rows
-            self.cum_rows.append(total)
-
-        if not self.files:
-            raise ValueError(f"No valid parquet files found in directory '{src_dir}'.")
-
-        self._len = total
-
-        # Simple LRU cache {file_path: sequences_list}
-        self._cache: dict[str, list] = {}
-
-    # -------------------------------------------------- helper methods --------
-    def __len__(self) -> int:  # type: ignore[override]
-        return self._len
-
-    def _locate(self, idx: int) -> tuple[int, int]:
-        """Binary-search cumulative row counts → (file_idx, row_idx)"""
-        lo, hi = 0, len(self.cum_rows) - 1
-        while lo <= hi:
-            mid = (lo + hi) // 2
-            if idx < self.cum_rows[mid]:
-                hi = mid - 1
-            else:
-                lo = mid + 1
-        file_idx = lo
-        prior = self.cum_rows[file_idx - 1] if file_idx else 0
-        return file_idx, idx - prior
-
-    def _get_df(self, file_idx: int) -> pd.DataFrame:
-        """Return cached column list or load it if not present."""
-        fp = self.files[file_idx]
-
-        if fp in self._cache:
-            return self._cache[fp]
-
-        # Lazily load the shard with pyarrow for performance
-        table = pq.read_table(fp, columns=[self.src_column])
-        sequences: list = table.column(0).to_pylist()
-
-        # Evict oldest entry if cache is full
-        if len(self._cache) >= self.cache_size:
-            self._cache.pop(next(iter(self._cache)))
-
-        self._cache[fp] = sequences
-        return sequences
-
-    # -------------------------------------------------- main API -------------
-    def __getitem__(self, idx: int) -> torch.Tensor:  # type: ignore[override]
-        file_idx, row_idx = self._locate(idx)
-        seqs = self._get_df(file_idx)
-        seq = seqs[row_idx]
-        return torch.as_tensor(seq, dtype=torch.long)
-# -----------------------------------------------------------------------------
-
-
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+
     # Data
-    train_dataset = ParquetDataset(TRAIN_DIR, DATA_COLUMN)
-    val_dataset   = ParquetDataset(VAL_DIR,   DATA_COLUMN)
-    print(f"Train dataset length: {len(train_dataset)}")
-    print(f"Val dataset length: {len(val_dataset)}")
-    train_dl = TorchDataLoader(
-        train_dataset,
+    train_dl = DataLoader(
+        src_dir=TRAIN_DIR,
+        src_column=DATA_COLUMN,
         batch_size=BATCH_SIZE,
-        shuffle=True,
-        drop_last=True,
-        num_workers=4,
-        pin_memory=torch.cuda.is_available(),
+        shuffle_rows=True,
+        shuffle_files=True,
     )
-    val_dl = TorchDataLoader(
-        val_dataset,
+    val_dl = DataLoader(
+        src_dir=VAL_DIR,
+        src_column=DATA_COLUMN,
         batch_size=BATCH_SIZE,
-        shuffle=False,
-        drop_last=False,
-        num_workers=2,
-        pin_memory=torch.cuda.is_available(),
+        shuffle_rows=True,
+        shuffle_files=True,
     )
-    print(f"Train dataloader length: {len(train_dl)}")
-    print(f"Val dataloader length: {len(val_dl)}")
 
     # Model
     model = Model(
@@ -202,10 +101,9 @@ def main() -> None:
         transformer_depth=DEPTH,
         checkpoint_dir=CHECKPOINT_DIR,
     ).to(device)
-    print(f"Model initialized")
 
     optimizer = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.0)
-    print(f"Optimizer initialized")
+
     scheduler = LambdaLR(
         optimizer,
         lr_lambda=build_cosine_lr(
@@ -215,16 +113,16 @@ def main() -> None:
             final_lr=FINAL_LR,
         ),
     )
-    print(f"Scheduler initialized")
+
     # Loss and GradScaler must be initialized before loading checkpoints
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    criterion = nn.CrossEntropyLoss()
     scaler = GradScaler()
-    print(f"GradScaler initialized")
+
     # --------------------------------------------------
     # Resume from latest checkpoint if one exists
     # --------------------------------------------------
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
-    print(f"Latest checkpoint loaded")
+
     start_time = time.perf_counter()
     last_cp_time = start_time
     last_log_step = 0
@@ -233,7 +131,7 @@ def main() -> None:
     total_steps = EPOCHS * len(train_dl)
     pbar = tqdm(total=total_steps, desc="Training", unit="step",
                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}')
-    print(f"Progress bar initialized")
+
     model.train()
     global_step = 0
     accum = 0
@@ -241,22 +139,19 @@ def main() -> None:
     loss_tracker = RunningLossTracker()
     for epoch in range(EPOCHS):
         for batch in train_dl:
-            print(f"Batch: {batch}")
             iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
-            print("starting forward pass")
-            with autocast(device_type=device.type, enabled=(device.type == "cuda")):
+            
+            with autocast(device_type='cuda'):
                 logits = model(batch[:, :-1])
                 target = batch[:, 1:]
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
                 scaled_loss_value = float(loss.item() * MINI_BATCH_PER_STEP)
-            print("forward pass done")
+
             # Scale loss and backward pass
-            print("starting backward pass")
             scaler.scale(loss).backward()
             accum += 1
-            print("backward pass done")
-            # Only update the pbar once per optimizer step
+
             if accum % MINI_BATCH_PER_STEP == 0:
                 # Unscale gradients for gradient clipping
                 scaler.unscale_(optimizer)
