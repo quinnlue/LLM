@@ -85,8 +85,7 @@ if __name__ == "__main__":
         lora_r=R,
         lora_alpha=ALPHA,
     ).to(device)
-    print("all good loading model")
-    exit()
+
 
     train_dataset = SFTDataset(TRAIN_DIR, MAX_SEQ_LEN, "tokens", "mask")
     val_dataset = SFTDataset(VAL_DIR, MAX_SEQ_LEN, "tokens", "mask")
@@ -106,7 +105,8 @@ if __name__ == "__main__":
     scaler = GradScaler()
 
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
-
+    print("all good loading model")
+    exit()
     for epoch in range(EPOCHS):
         train_logger.info(f"Epoch {epoch+1}/{EPOCHS}")
         train_logger.info(f"Learning rate: {scheduler.get_last_lr()[0]}")
