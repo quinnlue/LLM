@@ -85,15 +85,35 @@ class ParquetDataset(torch.utils.data.Dataset):
     """
     def __init__(self, src_dir: str, src_column: str):
         self.src_column = src_column
-        self.files = [os.path.join(src_dir, f)
-                      for f in os.listdir(src_dir) if f.endswith(".parquet")]
-        # Pre-compute cumulative row counts so we can seek by global index
+        # Collect valid parquet files and compute cumulative row counts.
+        # We proactively validate each file so that corrupted or non-parquet
+        # files (which may have a *.parquet extension) are skipped instead of
+        # crashing at runtime when the first bad file is encountered.
+        self.files = []
         self.cum_rows = []
         total = 0
-        for fp in self.files:
-            n = pq.ParquetFile(fp).metadata.num_rows
-            total += n
+        for fname in os.listdir(src_dir):
+            if not fname.endswith(".parquet"):
+                continue
+            fp = os.path.join(src_dir, fname)
+            try:
+                parquet_file = pq.ParquetFile(fp)
+                n_rows = parquet_file.metadata.num_rows
+            except (pq.lib.ArrowInvalid, OSError) as e:
+                # Skip files that are not valid parquet or are unreadable.
+                print(f"[ParquetDataset] WARNING: Skipping invalid parquet file '{fp}': {e}", file=sys.stderr)
+                continue
+            if n_rows == 0:
+                # Empty shard – skip; avoids divide-by-zero issues later.
+                print(f"[ParquetDataset] WARNING: Skipping empty parquet file '{fp}'", file=sys.stderr)
+                continue
+            self.files.append(fp)
+            total += n_rows
             self.cum_rows.append(total)
+
+        if not self.files:
+            raise ValueError(f"No valid parquet files found in directory '{src_dir}'.")
+
         self._len = total
 
     def __len__(self) -> int:
