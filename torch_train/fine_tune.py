@@ -12,7 +12,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast
+from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
 
@@ -157,7 +158,7 @@ if __name__ == "__main__":
             y_data = y_data.to(device)
             masks = masks.to(device)
 
-            with autocast('cuda'):
+            with autocast(device_type='cuda'):
                 logits = model(x_data)
                 # Apply mask to loss calculation
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1), ignore_index=PAD_IDX,)

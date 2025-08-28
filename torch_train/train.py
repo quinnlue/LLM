@@ -11,7 +11,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast
+from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
 from gpt1.preprocess.dataloader import DataLoader
@@ -141,7 +142,7 @@ def main() -> None:
             iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
             
-            with autocast():
+            with autocast(device_type='cuda'):
                 logits = model(batch[:, :-1])
                 target = batch[:, 1:]
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
