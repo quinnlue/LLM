@@ -70,8 +70,8 @@ class SFTDataset(Dataset):
         return len(self.x_data)
 
     def __getitem__(self, idx):
-        # slice preloaded tensors
-        return self.x_data[idx].to(device), self.y_data[idx].to(device), self.masks[idx].to(device)
+        # Remove device movement from here - will be handled in training loop
+        return self.x_data[idx], self.y_data[idx], self.masks[idx]
 
         
 
@@ -151,11 +151,13 @@ if __name__ == "__main__":
     for epoch in range(EPOCHS):
         for batch in train_loader:
             iter_count += 1
-            # Unpack the batch tuple (x_data, y_data, masks)
+            # Unpack the batch tuple (x_data, y_data, masks) and move to device
             x_data, y_data, masks = batch
+            x_data = x_data.to(device)
+            y_data = y_data.to(device)
+            masks = masks.to(device)
 
-            
-            with autocast():
+            with autocast('cuda'):
                 logits = model(x_data)
                 # Apply mask to loss calculation
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1), ignore_index=PAD_IDX,)
