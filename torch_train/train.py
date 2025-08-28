@@ -118,8 +118,8 @@ class ParquetDataset(torch.utils.data.Dataset):
 
         self._len = total
 
-        # Simple LRU cache {file_path: DataFrame}
-        self._cache: dict[str, pd.DataFrame] = {}
+        # Simple LRU cache {file_path: sequences_list}
+        self._cache: dict[str, list] = {}
 
     # -------------------------------------------------- helper methods --------
     def __len__(self) -> int:  # type: ignore[override]
@@ -139,27 +139,28 @@ class ParquetDataset(torch.utils.data.Dataset):
         return file_idx, idx - prior
 
     def _get_df(self, file_idx: int) -> pd.DataFrame:
-        """Return cached DataFrame or load it if not present."""
+        """Return cached column list or load it if not present."""
         fp = self.files[file_idx]
 
         if fp in self._cache:
             return self._cache[fp]
 
-        # Lazily load the shard; keep only *cache_size* shards in memory
-        df = pd.read_parquet(fp, columns=[self.src_column])
+        # Lazily load the shard with pyarrow for performance
+        table = pq.read_table(fp, columns=[self.src_column])
+        sequences: list = table.column(0).to_pylist()
 
         # Evict oldest entry if cache is full
         if len(self._cache) >= self.cache_size:
             self._cache.pop(next(iter(self._cache)))
 
-        self._cache[fp] = df
-        return df
+        self._cache[fp] = sequences
+        return sequences
 
     # -------------------------------------------------- main API -------------
     def __getitem__(self, idx: int) -> torch.Tensor:  # type: ignore[override]
         file_idx, row_idx = self._locate(idx)
-        df = self._get_df(file_idx)
-        seq = df.iloc[row_idx][self.src_column]
+        seqs = self._get_df(file_idx)
+        seq = seqs[row_idx]
         return torch.as_tensor(seq, dtype=torch.long)
 # -----------------------------------------------------------------------------
 
