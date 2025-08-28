@@ -81,6 +81,7 @@ class TransformerBlock(nn.Module):
         self.ln1 = nn.LayerNorm(d_model)
         self.attn = FlashMHA(d_model, num_heads, lora, lora_r, lora_alpha)
         self.ln2 = nn.LayerNorm(d_model)
+        self.lora = lora
         if self.lora:
             self.proj_up_lora_A = nn.Linear(d_model, lora_r, bias=False)
             self.proj_up_lora_B = nn.Linear(lora_r, d_model * mlp_ratio, bias=False)
