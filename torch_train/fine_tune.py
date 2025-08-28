@@ -30,6 +30,8 @@ from gpt1.torch_train.train import (
     N_HEADS,
     DEPTH,
     CHECKPOINT_DIR,
+    LOG_INTERVAL_STEPS,
+    CHECKPOINT_INTERVAL_SECONDS,
 )
 
 class SFTDataset(Dataset):
@@ -109,13 +111,92 @@ if __name__ == "__main__":
 
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
     print("loaded latest checkpoint")
-    exit()
 
+    criterion = nn.CrossEntropyLoss()
+    print("initialized criterion")
+
+    start_time = time.perf_counter()
+    last_cp_time = start_time
+    last_log_step = 0
+
+    # Progress bar
+    total_steps = EPOCHS * len(train_loader)
+    pbar = tqdm(total=total_steps, desc="Training", unit="step",
+                bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}')
+
+    model.train()
+    global_step = 0
+    accum = 0
+    iter_count = 0
+    loss_tracker = RunningLossTracker()
     for epoch in range(EPOCHS):
-        train_logger.info(f"Epoch {epoch+1}/{EPOCHS}")
-        train_logger.info(f"Learning rate: {scheduler.get_last_lr()[0]}")
-        train_logger.info(f"Training...")
-        train(model, optimizer, scheduler, scaler, device, train_loader, val_loader, epoch)
-        train_logger.info(f"Validation...")
-        val(model, optimizer, scheduler, scaler, device, val_loader, epoch)
+        for batch in train_loader:
+            iter_count += 1
+            batch = torch.as_tensor(batch, dtype=torch.long, device=device)
+            
+            with autocast():
+                logits = model(batch[:, :-1])
+                target = batch[:, 1:]
+                loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1))
+                scaled_loss_value = float(loss.item())
+
+            # Scale loss and backward pass
+            scaler.scale(loss).backward()
+            accum += 1
+
+            # Unscale gradients for gradient clipping
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(lora_params, 1.0)
+            
+            # Optimizer step with scaler
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+            scheduler.step()
+            accum = 0
+            global_step += 1
+
+            # Update progress bar
+            # Update running loss trackers in O(1)
+            loss_tracker.update(scaled_loss_value)
+            ema_100, ema_1k, ema_10k = loss_tracker.get_running_losses()
+            pbar.set_postfix(
+                loss=f"{scaled_loss_value:.4f}",
+                ema_100=f"{ema_100:.4f}",
+                ema_1k=f"{ema_1k:.4f}",
+                ema_10k=f"{ema_10k:.4f}",
+                lr=f"{optimizer.param_groups[0]['lr']:.6f}"
+            )
+            pbar.update(1)
+
+            # Periodic training loss logging
+            if iter_count - last_log_step >= LOG_INTERVAL_STEPS:
+                train_logger.info(
+                    f"iter={iter_count} step={global_step} loss={scaled_loss_value:.6f} lr={optimizer.param_groups[0]['lr']:.8f}"
+                )
+                last_log_step = iter_count
+
+            # Checkpointing
+            if time.perf_counter() - last_cp_time > CHECKPOINT_INTERVAL_SECONDS:
+                # Validation before checkpoint
+                val_loss = model.evaluate(val_loader, device)
+                val_logger.info(
+                    f"iter={iter_count} step={global_step} val_loss={val_loss:.6f}"
+                )
+                ema_100, ema_1k, ema_10k = loss_tracker.get_running_losses()
+                pbar.set_postfix(
+                    loss=f"{scaled_loss_value:.4f}",
+                    ema_100=f"{ema_100:.4f}",
+                    ema_1k=f"{ema_1k:.4f}",
+                    ema_10k=f"{ema_10k:.4f}",
+                    val_loss=f"{val_loss:.4f}",
+                    lr=f"{optimizer.param_groups[0]['lr']:.6f}"
+                )
+                model.checkpoint(optimizer, scheduler, scaler)
+                last_cp_time = time.perf_counter()
+
+    pbar.close()
+
+    # Final checkpoint
+    model.checkpoint(optimizer, scheduler, scaler)
     
