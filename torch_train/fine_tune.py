@@ -44,9 +44,9 @@ class SFTDataset(Dataset):
         df = pd.read_parquet(data_path)
         
         # Convert lists to numpy arrays and create input/output pairs
-        self.x_data = []
-        self.y_data = []
-        self.masks = []
+        x_data_list = []
+        y_data_list = []
+        masks_list = []
         
         for _, row in df.iterrows():
             tokens = np.array(row[data_column])
@@ -57,14 +57,14 @@ class SFTDataset(Dataset):
             y_seq = tokens[1:]   # all tokens except the first one
             mask_seq = mask[:-1] # mask for input sequence
             
-            self.x_data.append(x_seq)
-            self.y_data.append(y_seq)
-            self.masks.append(mask_seq)
+            x_data_list.append(x_seq)
+            y_data_list.append(y_seq)
+            masks_list.append(mask_seq)
         
-        # Convert to torch tensors
-        self.x_data = torch.tensor(self.x_data, dtype=torch.long)
-        self.y_data = torch.tensor(self.y_data, dtype=torch.long)
-        self.masks = torch.tensor(self.masks, dtype=torch.bool)
+        # Convert lists to single numpy arrays first, then to tensors
+        self.x_data = torch.from_numpy(np.array(x_data_list)).long()
+        self.y_data = torch.from_numpy(np.array(y_data_list)).long()
+        self.masks = torch.from_numpy(np.array(masks_list)).bool()
 
     def __len__(self):
         return len(self.x_data)
