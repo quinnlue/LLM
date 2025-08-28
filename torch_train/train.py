@@ -6,16 +6,20 @@ from pathlib import Path
 import time
 from datetime import datetime
 import math
+import random
+import pandas as pd
+import pyarrow.parquet as pq
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
-from torch.amp import autocast
+from torch.cuda.amp import autocast
 from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
-from gpt1.preprocess.dataloader import DataLoader
+# torch DataLoader replaces custom one
+from torch.utils.data import DataLoader as TorchDataLoader
 from gpt1.tokenizer.tokenizer import tokenizer
 from .model import Model
 from dlx.utils.logger import train_logger, val_logger
@@ -39,14 +43,14 @@ CHECKPOINT_DIR = str(CHECKPOINT_DIR)
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
 D_MODEL = 1024
-N_HEADS = 12
+N_HEADS = 16                 # 1024 % 16 == 0
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
 DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 4
-BATCH_SIZE = 56
+BATCH_SIZE = 48
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
@@ -72,23 +76,72 @@ def build_cosine_lr(total_steps: int, warmup_steps: int, max_lr: float, final_lr
     return lr_lambda
 
 
+# ---------- dataset ----------------------------------------------------------
+class ParquetDataset(torch.utils.data.Dataset):
+    """
+    Map-style dataset that pulls sequences from parquet shards.
+    Assumes each parquet file has a column ``src_column`` whose rows
+    are lists / np arrays of token IDs.
+    """
+    def __init__(self, src_dir: str, src_column: str):
+        self.src_column = src_column
+        self.files = [os.path.join(src_dir, f)
+                      for f in os.listdir(src_dir) if f.endswith(".parquet")]
+        # Pre-compute cumulative row counts so we can seek by global index
+        self.cum_rows = []
+        total = 0
+        for fp in self.files:
+            n = pq.ParquetFile(fp).metadata.num_rows
+            total += n
+            self.cum_rows.append(total)
+        self._len = total
+
+    def __len__(self) -> int:
+        return self._len
+
+    def _locate(self, idx: int) -> tuple[int, int]:
+        # binary search cumulative offsets → (file_idx, row_idx)
+        lo, hi = 0, len(self.cum_rows) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if idx < self.cum_rows[mid]:
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        file_idx = lo
+        prior = self.cum_rows[file_idx - 1] if file_idx else 0
+        return file_idx, idx - prior
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        file_idx, row_idx = self._locate(idx)
+        df = pd.read_parquet(self.files[file_idx], columns=[self.src_column])
+        seq = df.iloc[row_idx][self.src_column]
+        return torch.as_tensor(seq, dtype=torch.long)
+# -----------------------------------------------------------------------------
+
+
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Data
-    train_dl = DataLoader(
-        src_dir=TRAIN_DIR,
-        src_column=DATA_COLUMN,
+    train_dataset = ParquetDataset(TRAIN_DIR, DATA_COLUMN)
+    val_dataset   = ParquetDataset(VAL_DIR,   DATA_COLUMN)
+
+    train_dl = TorchDataLoader(
+        train_dataset,
         batch_size=BATCH_SIZE,
-        shuffle_rows=True,
-        shuffle_files=True,
+        shuffle=True,
+        drop_last=True,
+        num_workers=4,
+        pin_memory=torch.cuda.is_available(),
     )
-    val_dl = DataLoader(
-        src_dir=VAL_DIR,
-        src_column=DATA_COLUMN,
+    val_dl = TorchDataLoader(
+        val_dataset,
         batch_size=BATCH_SIZE,
-        shuffle_rows=True,
-        shuffle_files=True,
+        shuffle=False,
+        drop_last=False,
+        num_workers=2,
+        pin_memory=torch.cuda.is_available(),
     )
 
     # Model
@@ -115,7 +168,7 @@ def main() -> None:
     )
 
     # Loss and GradScaler must be initialized before loading checkpoints
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
     scaler = GradScaler()
 
     # --------------------------------------------------
@@ -142,7 +195,7 @@ def main() -> None:
             iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
             
-            with autocast(device_type='cuda'):
+            with autocast(device_type=device.type, enabled=(device.type == "cuda")):
                 logits = model(batch[:, :-1])
                 target = batch[:, 1:]
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
@@ -152,6 +205,7 @@ def main() -> None:
             scaler.scale(loss).backward()
             accum += 1
 
+            # Only update the pbar once per optimizer step
             if accum % MINI_BATCH_PER_STEP == 0:
                 # Unscale gradients for gradient clipping
                 scaler.unscale_(optimizer)
