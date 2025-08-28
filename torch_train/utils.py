@@ -9,9 +9,11 @@ def calculate_steps_per_sec(current_step: int, start_time: float) -> float:
 
 def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoint_dir) -> None:
     if not os.path.isdir(checkpoint_dir):
+        print(f"[INFO] No checkpoint directory found at {checkpoint_dir}")
         return  
     ckpts = [f for f in os.listdir(checkpoint_dir) if f.endswith(".pt")]
     if not ckpts:
+        print(f"[INFO] No checkpoints found in {checkpoint_dir}")
         return
     latest = max(ckpts, key=lambda f: os.path.getmtime(os.path.join(checkpoint_dir, f)))
     cp_path = os.path.join(checkpoint_dir, latest)
