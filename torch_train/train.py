@@ -166,11 +166,12 @@ class ParquetDataset(torch.utils.data.Dataset):
 
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    print(f"Using device: {device}")
     # Data
     train_dataset = ParquetDataset(TRAIN_DIR, DATA_COLUMN)
     val_dataset   = ParquetDataset(VAL_DIR,   DATA_COLUMN)
-
+    print(f"Train dataset length: {len(train_dataset)}")
+    print(f"Val dataset length: {len(val_dataset)}")
     train_dl = TorchDataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -187,6 +188,8 @@ def main() -> None:
         num_workers=2,
         pin_memory=torch.cuda.is_available(),
     )
+    print(f"Train dataloader length: {len(train_dl)}")
+    print(f"Val dataloader length: {len(val_dl)}")
 
     # Model
     model = Model(
@@ -198,9 +201,10 @@ def main() -> None:
         transformer_depth=DEPTH,
         checkpoint_dir=CHECKPOINT_DIR,
     ).to(device)
+    print(f"Model initialized")
 
     optimizer = optim.AdamW(model.parameters(), lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.0)
-
+    print(f"Optimizer initialized")
     scheduler = LambdaLR(
         optimizer,
         lr_lambda=build_cosine_lr(
@@ -210,16 +214,16 @@ def main() -> None:
             final_lr=FINAL_LR,
         ),
     )
-
+    print(f"Scheduler initialized")
     # Loss and GradScaler must be initialized before loading checkpoints
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
     scaler = GradScaler()
-
+    print(f"GradScaler initialized")
     # --------------------------------------------------
     # Resume from latest checkpoint if one exists
     # --------------------------------------------------
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
-
+    print(f"Latest checkpoint loaded")
     start_time = time.perf_counter()
     last_cp_time = start_time
     last_log_step = 0
@@ -228,7 +232,7 @@ def main() -> None:
     total_steps = EPOCHS * len(train_dl)
     pbar = tqdm(total=total_steps, desc="Training", unit="step",
                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}')
-
+    print(f"Progress bar initialized")
     model.train()
     global_step = 0
     accum = 0
@@ -236,19 +240,21 @@ def main() -> None:
     loss_tracker = RunningLossTracker()
     for epoch in range(EPOCHS):
         for batch in train_dl:
+            print(f"Batch: {batch}")
             iter_count += 1
             batch = torch.as_tensor(batch, dtype=torch.long, device=device)
-            
+            print("starting forward pass")
             with autocast(device_type=device.type, enabled=(device.type == "cuda")):
                 logits = model(batch[:, :-1])
                 target = batch[:, 1:]
                 loss = criterion(logits.reshape(-1, VOCAB_SIZE), target.reshape(-1)) / MINI_BATCH_PER_STEP
                 scaled_loss_value = float(loss.item() * MINI_BATCH_PER_STEP)
-
+            print("forward pass done")
             # Scale loss and backward pass
+            print("starting backward pass")
             scaler.scale(loss).backward()
             accum += 1
-
+            print("backward pass done")
             # Only update the pbar once per optimizer step
             if accum % MINI_BATCH_PER_STEP == 0:
                 # Unscale gradients for gradient clipping
