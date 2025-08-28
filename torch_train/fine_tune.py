@@ -6,6 +6,8 @@ from pathlib import Path
 import time
 from datetime import datetime
 import math
+import pandas as pd
+from torch.utils.data import Dataset
 
 import torch
 import torch.nn as nn
@@ -31,9 +33,40 @@ from gpt1.torch_train.train import (
     CHECKPOINT_DIR,
 )
 
+class SFTDataset(Dataset):
+    def __init__(self, data_path: str, max_seq_len: int, data_column: str, mask_column: str):
+        self.data = pd.read_parquet(data_path)
+        self.data_column = data_column
+        self.mask_column = mask_column
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        src = self.data[self.data_column].iloc[idx]
+        mask = self.data[self.mask_column].iloc[idx]
+
+        x = src[:,:-1]
+        y = src[:,1:]
+
+        x = torch.tensor(x, dtype=torch.long).requires_grad_(False)
+        y = torch.tensor(y, dtype=torch.long).requires_grad_(False)
+        mask = torch.tensor(mask, dtype=torch.bool).requires_grad_(False)
+
+        return x, y, mask
+        
+
 R = 8
 ALPHA = R
+BATCH_SIZE = 128
 
+EPOCHS = 3
+_BASE_DIR = Path(__file__).resolve().parents[1]
+
+# PATHS ------------------------------
+TRAIN_DIR = _BASE_DIR / "data" / "finetune" / "train.parquet"
+VAL_DIR = _BASE_DIR / "data" / "finetune" / "validation.parquet"
+CHECKPOINT_DIR = _BASE_DIR / "fine_tune" / "checkpoints"
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,10 +85,33 @@ if __name__ == "__main__":
         lora_r=R,
         lora_alpha=ALPHA,
     ).to(device)
+    print("all good loading model")
+    exit()
 
-    optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+    train_dataset = SFTDataset(TRAIN_DIR, MAX_SEQ_LEN, "tokens", "mask")
+    val_dataset = SFTDataset(VAL_DIR, MAX_SEQ_LEN, "tokens", "mask")
+
+    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, pin_memory=True)
+    val_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False, pin_memory=True)
+
+    lora_params = []
+    for name, param in model.named_parameters():
+        if "lora" in name:
+            lora_params.append(param)
+        else:
+            param.requires_grad = False
+
+    optimizer = optim.AdamW(lora_params, lr=1e-4)
     scheduler = LambdaLR(optimizer, lr_lambda=lambda step: 1.0)
     scaler = GradScaler()
 
     load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
+
+    for epoch in range(EPOCHS):
+        train_logger.info(f"Epoch {epoch+1}/{EPOCHS}")
+        train_logger.info(f"Learning rate: {scheduler.get_last_lr()[0]}")
+        train_logger.info(f"Training...")
+        train(model, optimizer, scheduler, scaler, device, train_loader, val_loader, epoch)
+        train_logger.info(f"Validation...")
+        val(model, optimizer, scheduler, scaler, device, val_loader, epoch)
     
