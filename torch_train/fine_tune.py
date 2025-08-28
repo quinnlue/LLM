@@ -20,7 +20,7 @@ from gpt1.tokenizer.tokenizer import tokenizer
 from gpt1.torch_train.model import Model
 from dlx.utils.logger import train_logger, val_logger
 from gpt1.training.utils import RunningLossTracker
-from gpt1.torch_train.utils import load_latest_checkpoint
+from gpt1.torch_train.utils import load_latest_checkpoint, resize_token_embeddings
 
 from gpt1.torch_train.train import (
     VOCAB_SIZE,
