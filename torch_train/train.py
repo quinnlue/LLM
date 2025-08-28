@@ -46,7 +46,7 @@ DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 4
-BATCH_SIZE = 48
+BATCH_SIZE = 64
 DATA_COLUMN = "seq"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
