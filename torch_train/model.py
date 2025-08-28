@@ -40,9 +40,9 @@ class FlashMHA(nn.Module):
         q, k, v = qkv.split(self.d_model, dim=-1)
 
         if self.lora:
-            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight @ self.q_lora_B.weight)
-            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight @ self.k_lora_B.weight)
-            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight @ self.v_lora_B.weight)
+            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.T @ self.q_lora_B.weight)
+            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.T @ self.k_lora_B.weight)
+            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.T @ self.v_lora_B.weight)
             q = q + q_lora_delta
             k = k + k_lora_delta
             v = v + v_lora_delta
@@ -71,7 +71,7 @@ class FlashMHA(nn.Module):
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
         if self.lora:
-            attn_out = attn_out + self.scaling * (attn_out @ self.o_lora_A.weight @ self.o_lora_B.weight)
+            attn_out = attn_out + self.scaling * (attn_out @ self.o_lora_A.weight.T @ self.o_lora_B.weight)
         return self.out_proj(attn_out)
 
 
@@ -99,12 +99,12 @@ class TransformerBlock(nn.Module):
         x = x + self.attn(self.ln1(x))
         x = self.ln2(x)
         if self.lora:
-            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight @ self.proj_up_lora_B.weight)
+            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight.T @ self.proj_up_lora_B.weight)
             proj_up = self.mlp[0](x) + proj_up_lora_delta
 
             activated = self.mlp[1](proj_up)
         
-            proj_down_lora_delta = self.scaling * (activated @ self.proj_down_lora_A.weight @ self.proj_down_lora_B.weight)
+            proj_down_lora_delta = self.scaling * (activated @ self.proj_down_lora_A.weight.T @ self.proj_down_lora_B.weight)
             mlp_out = self.mlp[2](activated) + proj_down_lora_delta
         else:
             mlp_out = self.mlp(x)
