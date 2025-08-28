@@ -110,8 +110,8 @@ if __name__ == "__main__":
     train_dataset = SFTDataset(TRAIN_DIR, MAX_SEQ_LEN, "tokens", "mask")
     val_dataset = SFTDataset(VAL_DIR, MAX_SEQ_LEN, "tokens", "mask")
     print("initialized datasets")
-    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, pin_memory=True)
-    val_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False)
     print("initialized dataloaders")
     lora_params = []
     for name, param in model.named_parameters():
