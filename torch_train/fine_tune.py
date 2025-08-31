@@ -115,12 +115,13 @@ if __name__ == "__main__":
     print("initialized dataloaders")
     lora_params = []
     for name, param in model.named_parameters():
+        continue
         if "lora" in name:
             lora_params.append(param)
         else:
             param.requires_grad = False
     print("initialized lora params")
-    optimizer = optim.AdamW(lora_params, lr=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-4)
     print("initialized optimizer")
     scheduler = LambdaLR(optimizer, lr_lambda=lambda step: 1.0)
     print("initialized scheduler")
