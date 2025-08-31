@@ -87,6 +87,16 @@ TRAIN_DIR = _BASE_DIR / "data" / "finetune" / "train.parquet"
 VAL_DIR = _BASE_DIR / "data" / "finetune" / "validation.parquet"
 CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
 
+def build_cosine_lr(total_steps: int, warmup_steps: int, max_lr: float, final_lr: float):
+    def lr_lambda(step: int):
+        if step < warmup_steps:
+            return (step + 1) / max(1, warmup_steps)
+        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+        cosine = 0.5 * (1.0 + torch.cos(torch.tensor(progress * 3.1415926535)))
+        scale = cosine * (1.0 - final_lr / max_lr) + (final_lr / max_lr)
+        return float(scale)
+    return lr_lambda
+
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cpu":
@@ -120,9 +130,25 @@ if __name__ == "__main__":
         else:
             param.requires_grad = False
     print("initialized lora params")
-    optimizer = optim.AdamW(lora_params, lr=1e-4)
+
+    # Calculate scheduler parameters
+    TOTAL_STEPS = EPOCHS * len(train_loader)
+    WARMUP_STEPS = TOTAL_STEPS // 100 * 3  # 3% warmup like in train.py
+    MAX_LR = 1e-4  # Your current learning rate
+    FINAL_LR = 1e-6  # Final learning rate
+
+    optimizer = optim.AdamW(lora_params, lr=MAX_LR, betas=(0.9, 0.95), weight_decay=0.0)
     print("initialized optimizer")
-    scheduler = LambdaLR(optimizer, lr_lambda=lambda step: 1.0)
+
+    scheduler = LambdaLR(
+        optimizer,
+        lr_lambda=build_cosine_lr(
+            total_steps=TOTAL_STEPS,
+            warmup_steps=WARMUP_STEPS,
+            max_lr=MAX_LR,
+            final_lr=FINAL_LR,
+        ),
+    )
     print("initialized scheduler")
     scaler = GradScaler()
     print("initialized scaler")
