@@ -163,6 +163,26 @@ if __name__ == "__main__":
             iter_count += 1
             # Unpack the batch tuple (x_data, y_data, masks) and move to device
             x_data, y_data, loss_mask = batch
+            
+            # DEBUG: Print first example of first batch and exit
+            if iter_count == 1:
+                print(f"=== DEBUG: First batch, first example ===")
+                print(f"Batch shapes: x_data={x_data.shape}, y_data={y_data.shape}, loss_mask={loss_mask.shape}")
+                print(f"First example x_data: {x_data[0]}")
+                print(f"First example y_data: {y_data[0]}")
+                print(f"First example loss_mask: {loss_mask[0]}")
+                print(f"x_data[0] non-zero tokens: {x_data[0][x_data[0] != PAD_IDX]}")
+                print(f"y_data[0] non-zero tokens: {y_data[0][y_data[0] != PAD_IDX]}")
+                print(f"loss_mask[0] True values: {loss_mask[0].sum()}")
+                
+                # Decode the sequences
+                x_text = tokenizer.decode(x_data[0].tolist())
+                y_text = tokenizer.decode(y_data[0].tolist())
+                print(f"Decoded x_data[0]: {repr(x_text)}")
+                print(f"Decoded y_data[0]: {repr(y_text)}")
+                print("=== Exiting after debug print ===")
+                exit()
+            
             x_data = x_data.to(device)
             y_data = y_data.to(device)
             loss_mask = loss_mask.to(device)
