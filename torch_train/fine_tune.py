@@ -97,6 +97,36 @@ def build_cosine_lr(total_steps: int, warmup_steps: int, max_lr: float, final_lr
         return float(scale)
     return lr_lambda
 
+def evaluate_model(model, dataloader, device, vocab_size, pad_idx):
+    """Custom evaluation function for SFTDataset format"""
+    model.eval()
+    losses = []
+    criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
+    
+    with torch.no_grad():
+        for batch in dataloader:
+            # Unpack the batch tuple (x_data, y_data, masks)
+            x_data, y_data, loss_mask = batch
+            
+            x_data = x_data.to(device)
+            y_data = y_data.to(device)
+            loss_mask = loss_mask.to(device)
+            
+            with autocast(device_type='cuda'):
+                logits = model(x_data).view(-1, vocab_size)
+                targets = y_data.view(-1)
+                loss_mask = loss_mask.view(-1)
+                loss = F.cross_entropy(
+                    logits[loss_mask],
+                    targets[loss_mask],
+                    ignore_index=pad_idx,
+                    reduction='mean'
+                )
+            losses.append(loss.item())
+    
+    model.train()
+    return float(sum(losses) / max(1, len(losses)))
+
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cpu":
@@ -248,7 +278,7 @@ if __name__ == "__main__":
             # Checkpointing
             if time.perf_counter() - last_cp_time > CHECKPOINT_INTERVAL_SECONDS:
                 # Validation before checkpoint
-                val_loss = model.evaluate(val_loader, device)
+                val_loss = evaluate_model(model, val_loader, device, VOCAB_SIZE, PAD_IDX)
                 val_logger.info(
                     f"iter={iter_count} step={global_step} val_loss={val_loss:.6f}"
                 )
