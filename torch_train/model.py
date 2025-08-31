@@ -162,7 +162,8 @@ class Model(nn.Module):
             raise ValueError(f"Sequence length {seq_len} exceeds max_seq_len {self.max_seq_len}")
         x = self.token_emb(idx)  # [B, T, D]
         x = x + self.pos_emb[:seq_len].unsqueeze(0)
-        pad_mask = (idx == self.pad_idx)
+        # Boolean padding mask ➜ shape [B, 1, 1, T] so it can broadcast to (B, H, T, T)
+        pad_mask = (idx == self.pad_idx).unsqueeze(1).unsqueeze(2)
         for blk in self.blocks:
             x = blk(x, pad_mask)
         logits = self.lm_head(x)
