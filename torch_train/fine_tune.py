@@ -76,7 +76,7 @@ class SFTDataset(Dataset):
         
 
 R = 8
-ALPHA = 0
+ALPHA = R
 BATCH_SIZE = 32
 
 EPOCHS = 3
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         n_heads=N_HEADS,
         transformer_depth=DEPTH,
         checkpoint_dir=CHECKPOINT_DIR,
-        lora=False,
+        lora=True,
         lora_r=R,
         lora_alpha=ALPHA,
     ).to(device)  # Move model to device FIRST
@@ -115,13 +115,12 @@ if __name__ == "__main__":
     print("initialized dataloaders")
     lora_params = []
     for name, param in model.named_parameters():
-        continue
         if "lora" in name:
             lora_params.append(param)
         else:
             param.requires_grad = False
     print("initialized lora params")
-    optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+    optimizer = optim.AdamW(lora_params, lr=1e-4)
     print("initialized optimizer")
     scheduler = LambdaLR(optimizer, lr_lambda=lambda step: 1.0)
     print("initialized scheduler")
@@ -163,7 +162,8 @@ if __name__ == "__main__":
             iter_count += 1
             # Unpack the batch tuple (x_data, y_data, masks) and move to device
             x_data, y_data, loss_mask = batch
-                    
+            
+            
             x_data = x_data.to(device)
             y_data = y_data.to(device)
             loss_mask = loss_mask.to(device)
