@@ -56,7 +56,7 @@ class SFTDataset(Dataset):
             # Create input (tokens[:-1]) and output (tokens[1:]) pairs
             x_seq = tokens[:-1]  # all tokens except the last one
             y_seq = tokens[1:]   # all tokens except the first one
-            mask_seq = mask[:-1] # mask for input sequence
+            mask_seq = mask[1:] # mask for input sequence
             
             x_data_list.append(x_seq)
             y_data_list.append(y_seq)
@@ -71,7 +71,6 @@ class SFTDataset(Dataset):
         return len(self.x_data)
 
     def __getitem__(self, idx):
-        # Remove device movement from here - will be handled in training loop
         return self.x_data[idx], self.y_data[idx], self.masks[idx]
 
         
@@ -150,7 +149,7 @@ if __name__ == "__main__":
 
     # Progress bar
     total_steps = EPOCHS * len(train_loader)
-    pbar = tqdm(total=total_steps, desc="Training", unit="step",
+    pbar = tqdm(total=total_steps,  desc="Training", unit="step",
                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}')
 
     model.train()
