@@ -76,7 +76,7 @@ class SFTDataset(Dataset):
         
 
 R = 8
-ALPHA = R
+ALPHA = 0
 BATCH_SIZE = 32
 
 EPOCHS = 3
