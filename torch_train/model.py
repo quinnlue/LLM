@@ -33,7 +33,7 @@ class FlashMHA(nn.Module):
         self.qkv = nn.Linear(d_model, 3 * d_model)
         self.out_proj = nn.Linear(d_model, d_model)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor) -> torch.Tensor:
         # x: [batch, seq, d_model]
         batch_size, seq_len, _ = x.shape
         qkv = self.qkv(x)  # [B, T, 3 * D]
@@ -64,9 +64,9 @@ class FlashMHA(nn.Module):
         # Use PyTorch SDPA which dispatches to FlashAttention on supported GPUs/dtypes
         if x.is_cuda:
             with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=True):
-                attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
+                attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=pad_mask, dropout_p=0.0, is_causal=True)
         else:
-            attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
+            attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=pad_mask, dropout_p=0.0, is_causal=True)
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
@@ -95,8 +95,8 @@ class TransformerBlock(nn.Module):
             nn.Linear(d_model * mlp_ratio, d_model),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.attn(self.ln1(x))
+    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor) -> torch.Tensor:
+        x = x + self.attn(self.ln1(x), pad_mask)
         x = self.ln2(x)
         if self.lora:
             proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight.T @ self.proj_up_lora_B.weight.T)
@@ -162,8 +162,9 @@ class Model(nn.Module):
             raise ValueError(f"Sequence length {seq_len} exceeds max_seq_len {self.max_seq_len}")
         x = self.token_emb(idx)  # [B, T, D]
         x = x + self.pos_emb[:seq_len].unsqueeze(0)
+        pad_mask = (idx == self.pad_idx)
         for blk in self.blocks:
-            x = blk(x)
+            x = blk(x, pad_mask)
         logits = self.lm_head(x)
         return logits
 

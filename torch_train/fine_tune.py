@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.amp import autocast
 from torch.cuda.amp import GradScaler
 from tqdm import tqdm
-
+import torch.nn.functional as F
 
 from gpt1.tokenizer.tokenizer import tokenizer
 from gpt1.torch_train.model import Model
@@ -153,16 +153,25 @@ if __name__ == "__main__":
         for batch in train_loader:
             iter_count += 1
             # Unpack the batch tuple (x_data, y_data, masks) and move to device
-            x_data, y_data, masks = batch
+            x_data, y_data, loss_mask = batch
             x_data = x_data.to(device)
             y_data = y_data.to(device)
-            masks = masks.to(device)
+            loss_mask = loss_mask.to(device)
+            
 
             with autocast(device_type='cuda'):
-                logits = model(x_data)
-                # Apply mask to loss calculation
-                loss = criterion(logits.reshape(-1, VOCAB_SIZE), y_data.reshape(-1))
+                logits = model.forward(x_data, loss_mask).view(-1, VOCAB_SIZE)
+                targets = y_data.view(-1)
+                loss_mask = loss_mask.view(-1)
+                loss = F.cross_entropy(
+                    logits[loss_mask],
+                    targets[loss_mask],
+                    ignore_index=PAD_IDX,
+                    reduction='mean'
+                )
+
                 scaled_loss_value = float(loss.item())
+ 
 
             # Scale loss and backward pass
             scaler.scale(loss).backward()
