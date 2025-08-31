@@ -62,7 +62,7 @@ def resize_token_embeddings(model, new_vocab_size: int, pad_idx: int = 0) -> Non
     print(f"[INFO] Successfully resized token embeddings and lm_head")
 
 
-def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoint_dir) -> None:
+def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoint_dir, strict: bool = True) -> None:
     if not os.path.isdir(checkpoint_dir):
         print(f"[INFO] No checkpoint directory found at {checkpoint_dir}")
         return  
@@ -93,7 +93,7 @@ def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoi
             
             # Load the checkpoint state
             try:
-                model.load_state_dict(model_state, strict=True)
+                model.load_state_dict(model_state, strict=strict)
                 print(f"[INFO] Successfully loaded checkpoint with vocab size {checkpoint_vocab_size}")
                 
                 # Now resize to the target vocab size
@@ -107,10 +107,10 @@ def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoi
                 return
         else:
             # No vocab size mismatch, load normally
-            model.load_state_dict(model_state)
+            model.load_state_dict(model_state, strict=strict)
     else:
         # No token embeddings in checkpoint, load normally
-        model.load_state_dict(model_state)
+        model.load_state_dict(model_state, strict=strict)
     
     optimizer.load_state_dict(state["optimizer"])
     if "scheduler" in state:

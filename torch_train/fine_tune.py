@@ -129,7 +129,7 @@ if __name__ == "__main__":
     print("initialized scaler")
 
     # Load checkpoint AFTER model is on device
-    load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR)
+    load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR, strict=False)
     print("loaded latest checkpoint")
 
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
