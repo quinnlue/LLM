@@ -160,7 +160,7 @@ if __name__ == "__main__":
             
 
             with autocast(device_type='cuda'):
-                logits = model(x_data, loss_mask).view(-1, VOCAB_SIZE)
+                logits = model(x_data).view(-1, VOCAB_SIZE)
                 targets = y_data.view(-1)
                 loss_mask = loss_mask.view(-1)
                 loss = F.cross_entropy(
