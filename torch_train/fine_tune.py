@@ -128,8 +128,17 @@ if __name__ == "__main__":
     scaler = GradScaler()
     print("initialized scaler")
 
-    # Load checkpoint AFTER model is on device
-    load_latest_checkpoint(model, optimizer, scheduler, scaler, device, CHECKPOINT_DIR, strict=False)
+    # Skip optimizer state because we’re only training LoRA parameters.
+    load_latest_checkpoint(
+        model,
+        optimizer,
+        scheduler,
+        scaler,
+        device,
+        CHECKPOINT_DIR,
+        strict=False,
+        load_optim_state=False,
+    )
     print("loaded latest checkpoint")
 
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)

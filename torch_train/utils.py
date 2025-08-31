@@ -62,7 +62,17 @@ def resize_token_embeddings(model, new_vocab_size: int, pad_idx: int = 0) -> Non
     print(f"[INFO] Successfully resized token embeddings and lm_head")
 
 
-def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoint_dir, strict: bool = True) -> None:
+def load_latest_checkpoint(
+    model,
+    optimizer,
+    scheduler,
+    scaler,
+    device,
+    checkpoint_dir,
+    *,
+    strict: bool = True,
+    load_optim_state: bool = True,
+) -> None:
     if not os.path.isdir(checkpoint_dir):
         print(f"[INFO] No checkpoint directory found at {checkpoint_dir}")
         return  
@@ -112,9 +122,26 @@ def load_latest_checkpoint(model, optimizer, scheduler, scaler, device, checkpoi
         # No token embeddings in checkpoint, load normally
         model.load_state_dict(model_state, strict=strict)
     
-    optimizer.load_state_dict(state["optimizer"])
-    if "scheduler" in state:
-        scheduler.load_state_dict(state["scheduler"])
-    if "scaler" in state:
-        scaler.load_state_dict(state["scaler"])
+    # ------------------------------------------------------------------ #
+    # Optionally restore optimizer / scheduler / scaler state.           #
+    # This is useful for full-model training, but can be disabled        #
+    # (e.g. when fine-tuning only a subset of parameters like LoRA).     #
+    # ------------------------------------------------------------------ #
+    if load_optim_state:
+        try:
+            optimizer.load_state_dict(state["optimizer"])
+        except ValueError as exc:
+            print(f"[WARN] Skipping optimizer state: {exc}")
+        else:
+            if "scheduler" in state:
+                try:
+                    scheduler.load_state_dict(state["scheduler"])
+                except Exception as exc:  # scheduler state is nice-to-have
+                    print(f"[WARN] Skipping scheduler state: {exc}")
+            if "scaler" in state:
+                try:
+                    scaler.load_state_dict(state["scaler"])
+                except Exception as exc:
+                    print(f"[WARN] Skipping GradScaler state: {exc}")
+
     print(f"[INFO] Resumed from checkpoint {latest}")
