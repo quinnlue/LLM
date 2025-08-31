@@ -100,7 +100,7 @@ if __name__ == "__main__":
         n_heads=N_HEADS,
         transformer_depth=DEPTH,
         checkpoint_dir=CHECKPOINT_DIR,
-        lora=True,
+        lora=False,
         lora_r=R,
         lora_alpha=ALPHA,
     ).to(device)  # Move model to device FIRST
