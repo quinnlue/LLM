@@ -162,7 +162,8 @@ class Model(nn.Module):
             raise ValueError(f"Sequence length {seq_len} exceeds max_seq_len {self.max_seq_len}")
         x = self.token_emb(idx)  # [B, T, D]
         x = x + self.pos_emb[:seq_len].unsqueeze(0)
-        pad_mask = (idx == self.pad_idx).unsqueeze(1).unsqueeze(2).to(torch.bool)
+        pad_mask = (idx == self.pad_idx).unsqueeze(1)         # [B, 1, K_len]  <── ONLY 3-D
+                                                              # broadcast → (B, Q_len, K_len)
         print(pad_mask)
         print(idx)
         print(self.pad_idx)
