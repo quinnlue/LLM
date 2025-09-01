@@ -153,10 +153,25 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False)
     print("initialized dataloaders")
+
+    special_token_ids = torch.tensor([2, 51680, 51681], dtype=torch.long, device=device)
+
     lora_params = []
     for name, param in model.named_parameters():
         if "lora" in name:
             lora_params.append(param)
+
+        elif name == "token_emb.weight":
+            param.requires_grad = True
+
+            def mask_grad(grad, ids=special_token_ids):
+                mask = torch.zeros_like(grad)
+                mask[ids] = 1
+                return grad * mask
+            param.register_hook(mask_grad)
+
+            lora_params.append(param)
+
         else:
             param.requires_grad = False
     print("initialized lora params")
