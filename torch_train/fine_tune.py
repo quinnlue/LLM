@@ -101,7 +101,6 @@ def evaluate_model(model, dataloader, device, vocab_size, pad_idx):
     """Custom evaluation function for SFTDataset format"""
     model.eval()
     losses = []
-    criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
     
     with torch.no_grad():
         for batch in dataloader:
