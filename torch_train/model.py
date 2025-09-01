@@ -33,16 +33,16 @@ class FlashMHA(nn.Module):
         self.qkv = nn.Linear(d_model, 3 * d_model)
         self.out_proj = nn.Linear(d_model, d_model)
 
-    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: [batch, seq, d_model]
         batch_size, seq_len, _ = x.shape
         qkv = self.qkv(x)  # [B, T, 3 * D]
         q, k, v = qkv.split(self.d_model, dim=-1)
 
         if self.lora:
-            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.T @ self.q_lora_B.weight.T)
-            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.T @ self.k_lora_B.weight.T)
-            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.T @ self.v_lora_B.weight.T)
+            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.T @ self.q_lora_B.weight)
+            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.T @ self.k_lora_B.weight)
+            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.T @ self.v_lora_B.weight)
             q = q + q_lora_delta
             k = k + k_lora_delta
             v = v + v_lora_delta
@@ -64,14 +64,14 @@ class FlashMHA(nn.Module):
         # Use PyTorch SDPA which dispatches to FlashAttention on supported GPUs/dtypes
         if x.is_cuda:
             with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=True):
-                attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=pad_mask, dropout_p=0.0, is_causal=True)
+                attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
         else:
-            attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=pad_mask, dropout_p=0.0, is_causal=True)
+            attn_out = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
 
         # Merge heads
         attn_out = attn_out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
         if self.lora:
-            attn_out = attn_out + self.scaling * (attn_out @ self.o_lora_A.weight.T @ self.o_lora_B.weight.T)
+            attn_out = attn_out + self.scaling * (attn_out @ self.o_lora_A.weight.T @ self.o_lora_B.weight)
         return self.out_proj(attn_out)
 
 
@@ -95,16 +95,16 @@ class TransformerBlock(nn.Module):
             nn.Linear(d_model * mlp_ratio, d_model),
         )
 
-    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor) -> torch.Tensor:
-        x = x + self.attn(self.ln1(x), pad_mask)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + self.attn(self.ln1(x))
         x = self.ln2(x)
         if self.lora:
-            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight.T @ self.proj_up_lora_B.weight.T)
+            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight.T @ self.proj_up_lora_B.weight)
             proj_up = self.mlp[0](x) + proj_up_lora_delta
 
             activated = self.mlp[1](proj_up)
         
-            proj_down_lora_delta = self.scaling * (activated @ self.proj_down_lora_A.weight.T @ self.proj_down_lora_B.weight.T)
+            proj_down_lora_delta = self.scaling * (activated @ self.proj_down_lora_A.weight.T @ self.proj_down_lora_B.weight)
             mlp_out = self.mlp[2](activated) + proj_down_lora_delta
         else:
             mlp_out = self.mlp(x)
@@ -162,10 +162,8 @@ class Model(nn.Module):
             raise ValueError(f"Sequence length {seq_len} exceeds max_seq_len {self.max_seq_len}")
         x = self.token_emb(idx)  # [B, T, D]
         x = x + self.pos_emb[:seq_len].unsqueeze(0)
-        # Boolean padding mask ➜ shape [B, 1, 1, T] so it can broadcast to (B, H, T, T)
-        pad_mask = (idx == self.pad_idx).unsqueeze(1).unsqueeze(2)
         for blk in self.blocks:
-            x = blk(x, pad_mask)
+            x = blk(x)
         logits = self.lm_head(x)
         return logits
 
