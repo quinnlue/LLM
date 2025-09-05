@@ -96,6 +96,9 @@ def load_model(ckpt_path: str, device: torch.device) -> TransformerLM:
         transformer_depth=DEPTH,
         max_seq_len=MAX_SEQ_LEN,
         pad_idx=PAD_IDX,
+        lora=True,
+        lora_alpha=8,
+        lora_r=8
     ).to(device)
 
     if _is_git_lfs_pointer(ckpt_path):
