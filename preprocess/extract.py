@@ -37,7 +37,7 @@ def process_xz(member_info):
                         total_bytes += len(content.encode('utf-8'))
 
     except Exception as e:
-        print(f"⚠️ Error processing {member_name} in {tar_path}: {e}")
+        print(f"Error processing {member_name} in {tar_path}: {e}")
 
     return texts
 
@@ -82,5 +82,5 @@ if __name__ == "__main__":
     ])
 
     # Process tar files sequentially
-    for tar_path in tqdm(tar_files, desc="All tar files"):
+    for tar_path in tqdm(tar_files):
         print(process_tar(tar_path))

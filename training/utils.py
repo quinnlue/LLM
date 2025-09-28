@@ -3,8 +3,6 @@ import time
 from typing import Tuple, Deque
 
 class RunningLossTracker:
-    """Efficiently tracks running loss averages using sliding windows"""
-    
     def __init__(self, window_sizes: Tuple[int, int, int] = (100, 1000, 10000)):
         self.window_100, self.window_1k, self.window_10k = window_sizes
         
@@ -24,7 +22,6 @@ class RunningLossTracker:
         self.count_10k = 0
     
     def update(self, loss_value: float):
-        """Update running losses efficiently by adding new value and removing oldest if needed"""
         # Update 100-window
         if len(self.loss_window_100) == self.window_100:
             # Remove oldest value from sum
@@ -56,7 +53,6 @@ class RunningLossTracker:
         self.sum_10k += loss_value
     
     def get_running_losses(self) -> Tuple[float, float, float]:
-        """Get current running loss averages"""
         running_100_loss = self.sum_100 / self.count_100 if self.count_100 > 0 else float('inf')
         running_1k_loss = self.sum_1k / self.count_1k if self.count_1k > 0 else float('inf')
         running_10k_loss = self.sum_10k / self.count_10k if self.count_10k > 0 else float('inf')
@@ -64,19 +60,16 @@ class RunningLossTracker:
         return running_100_loss, running_1k_loss, running_10k_loss
 
 def format_fraction(current: int, total: int) -> str:
-    """Format fraction as percentage with 3 decimal places"""
     if total == 0:
         return "0.000%"
     percentage = (current / total) * 100
     return f"{percentage:.3f}%"
 
 def calculate_steps_per_sec(current_step: int, start_time: float) -> float:
-    """Calculate steps per second"""
     elapsed_time = time.perf_counter() - start_time
     return current_step / elapsed_time if elapsed_time > 0 else 0.0
 
 class ProgressBarManager:
-    """Manages progress bar updates and formatting"""
     
     def __init__(self, total_steps: int, start_time: float):
         self.total_steps = total_steps

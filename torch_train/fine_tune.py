@@ -252,7 +252,6 @@ if __name__ == "__main__":
 
                 scaled_loss_value = float(loss.item())
  
-
             # Scale loss and backward pass
             scaler.scale(loss).backward()
             accum += 1

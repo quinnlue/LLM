@@ -1,4 +1,5 @@
 import sys
+import os
 sys.path.append(r"gpt1")
 
 import dlx as dlx
@@ -17,31 +18,23 @@ from pathlib import Path
 _BASE_DIR = Path(__file__).resolve().parents[1]
 
 # PATHS ------------------------------
-TRAIN_DIR = _BASE_DIR / "data" / "train"
-VAL_DIR = _BASE_DIR / "data" / "validation"
-TEST_DIR = _BASE_DIR / "data" / "test"
-CHECKPOINT_DIR = _BASE_DIR / "checkpoints"
-
-# Convert Path objects to str for downstream code that expects strings
-TRAIN_DIR = str(TRAIN_DIR)
-VAL_DIR = str(VAL_DIR)
-TEST_DIR = str(TEST_DIR)
-CHECKPOINT_DIR = str(CHECKPOINT_DIR)
+TRAIN_DIR = os.path.join(_BASE_DIR, "data", "train")
+VAL_DIR = os.path.join(_BASE_DIR, "data", "validation")
+TEST_DIR = os.path.join(_BASE_DIR, "data", "test")
+CHECKPOINT_DIR = os.path.join(_BASE_DIR, "checkpoints")
 
 # MODEL HYPERPARAMETERS ------------------------------
 VOCAB_SIZE = len(tokenizer.get_vocab())
-D_MODEL = 768
-N_HEADS = 12
+D_MODEL = 1024
+N_HEADS = 16
 MAX_SEQ_LEN = 512
 PAD_IDX = 0
-EOS_IDX = 1
 DEPTH = 12
 
 # DATASET HYPERPARAMETERS ------------------------------
 MINI_BATCH_PER_STEP = 8
 BATCH_SIZE = 6
 DATA_COLUMN = "seq"
-BIN_COLUMN = "bin"
 
 # OPTIMIZER HYPERPARAMETERS ------------------------------
 EPOCHS = 1
@@ -145,5 +138,3 @@ for epoch in range(EPOCHS):
             last_cp_time = time.perf_counter()
 
 pbar.close()
-
-# EVALUATION LOOP ------------------------------

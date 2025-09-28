@@ -143,6 +143,6 @@ class Tokenizer:
             return json.load(f)
 
 if __name__ == "__main__":
-    text = "Hey gang asdfasdfhows it going?"
+    text = "How's it going?"
     tokenizer = Tokenizer(token_to_id_path=r"src\tokenizer\token_to_id.json", merges_path=r"src\tokenizer\merges.json", training_text=text, num_merges=21680)
     print(tokenizer.decode(tokenizer.encode(text)))

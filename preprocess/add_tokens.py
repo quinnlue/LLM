@@ -5,19 +5,13 @@ import pandas as pd
 # from src.tokenizer.tokenizer import Tokenizer
 import time
 from multiprocessing import Pool
-from tokenizers import Tokenizer, models, pre_tokenizers, decoders
-import pyarrow as pa
-import pyarrow.parquet as pq
-
-
+from tokenizers import Tokenizer
 
 tokenizer = None
 
 def init_worker():
     global tokenizer
     tokenizer = Tokenizer.from_file("tokenizer.json")
-
-
 
 def tokenize(text):
     global tokenizer
@@ -28,10 +22,8 @@ if __name__ == "__main__":
     tgt_folder = os.path.join("data/tokenized")
     os.makedirs(tgt_folder, exist_ok=True)
 
-    # Carry-over tokens from previous files (used as prefix for the next file)
     residual_tokens = []
 
-    # Process each parquet file in deterministic order
     for path in tqdm(sorted(os.listdir(data_folder)), desc="Processing files"):
         if path.endswith(".parquet"):
             src_path = os.path.join(data_folder, path) 
@@ -48,17 +40,14 @@ if __name__ == "__main__":
             total_chunks = 0
             part_idx = 0
 
-            # Ensure we start writing to a fresh file each run
             if os.path.exists(tgt_path):
                 os.remove(tgt_path)
 
             chunk_batch = []
             with Pool(processes=12, initializer=init_worker) as pool:
                 for seq in tqdm(pool.imap(tokenize, texts), total=len(texts)):
-                    # Prepend residual tokens from prior sequences/files
                     combined_tokens = residual_tokens + seq
 
-                    # Extract as many full chunks as possible
                     num_full_chunks = len(combined_tokens) // CHUNK_SIZE
                     if num_full_chunks > 0:
                         for i in range(num_full_chunks):
@@ -67,10 +56,8 @@ if __name__ == "__main__":
                             chunk_batch.append(combined_tokens[start:end])
                         total_chunks += num_full_chunks
 
-                    # Keep leftover tokens to prepend to the next sequence
                     residual_tokens = combined_tokens[num_full_chunks * CHUNK_SIZE:]
 
-                    # Write and reset batch when it gets large
                     if len(chunk_batch) >= BATCH_ROWS:
                         output_path = os.path.join(
                             tgt_folder,
@@ -85,7 +72,6 @@ if __name__ == "__main__":
                         part_idx += 1
                         chunk_batch = []
 
-            # Write any remaining full chunks for this file (leftover < CHUNK_SIZE is carried to next file)
             if chunk_batch:
                 output_path = os.path.join(
                     tgt_folder,

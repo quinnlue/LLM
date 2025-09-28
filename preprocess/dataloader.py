@@ -27,9 +27,7 @@ class Dataset:
     def __iter__(self):
         for i in range(0, len(self.src), self.batch_size):
             yield self.src[i:i+self.batch_size]
-
-
-
+            
 class DataLoader:
     def __init__(self, src_dir, src_column, batch_size, shuffle_rows: bool = True, shuffle_files: bool = True):
         self.batch_size = batch_size
