@@ -52,7 +52,7 @@ class InferenceEngine:
         print(f"Loading model from {checkpoint_path}")
 
         optim = AdamW(model.parameters(), precision=(np.float32, np.float32))
-        optim.load_state(os.path.join(checkpoint_path, "optimizer.pt"))
+        optim.load_state(checkpoint_path)
         
         return cls(model, tokenizer)
     
