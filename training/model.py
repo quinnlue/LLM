@@ -4,8 +4,8 @@ import dlx as dlx
 from dlx import Module, CrossEntropyWithLogits, xp
 from dlx.utils import train_logger, val_logger
 from dlx.nn.optim import Optimizer
-from ..preprocess.dataloader import DataLoader
-
+from gpt1.preprocess.dataloader import DataLoader
+from gpt1.tokenizer.tokenizer import tokenizer
 from tqdm import tqdm
 import time
 from datetime import datetime
@@ -27,6 +27,10 @@ class Model(Module):
             checkpoint_dir: str,
             epochs: int,
             mini_batch_per_step: int,
+            mlp_ratio: int = 4,
+            lora: bool = False,
+            lora_r: int = 16,
+            lora_alpha: int = 16
         ):
         super().__init__()
 
@@ -55,9 +59,15 @@ class Model(Module):
         self.heads = [
             self.transformer(
                 d_model=d_model, 
-                n_heads=n_heads
+                n_heads=n_heads,
+                mlp_ratio=mlp_ratio,
+                lora=lora,
+                lora_r=lora_r,
+                lora_alpha=lora_alpha
+
             ) for _ in range(transformer_depth)
             ]
+
         
         self.project = self.linear(
             d_model, 
@@ -94,3 +104,27 @@ class Model(Module):
 
 
 
+if __name__ == "__main__":
+    VOCAB_SIZE = len(tokenizer.get_vocab())
+    D_MODEL = 1024
+    N_HEADS = 16
+    MAX_SEQ_LEN = 512
+    PAD_IDX = 0
+    DEPTH = 12
+
+    model = Model(
+        vocab_size=VOCAB_SIZE,
+        d_model=D_MODEL,
+        max_seq_len=MAX_SEQ_LEN,
+        pad_idx=PAD_IDX,
+        n_heads=N_HEADS,
+        transformer_depth=DEPTH,
+        checkpoint_interval_seconds=3600,
+        train_dir="data/train",
+        validation_dir="data/validation",
+        checkpoint_dir="checkpoints",
+        epochs=1,
+        mini_batch_per_step=8
+    )
+
+    print(model)
