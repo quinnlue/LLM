@@ -43,6 +43,8 @@ class InferenceEngine:
             mlp_ratio=mlp_ratio
         )
 
+        print(model)
+
         print(model.num_parameters)
         for name, param in model.parameters().items():
             print(name, param.shape)
