@@ -1,12 +1,9 @@
 import sys
 import os
-sys.path.append(r"gpt1")
 
 import dlx as dlx
 from dlx import xp
-from gpt1.tokenizer.tokenizer import tokenizer
 from gpt1.training.model import Model
-from pathlib import Path
 import numpy as np
 
 
@@ -17,14 +14,16 @@ class InferenceEngine:
         self.model.is_training = False  # Set to eval mode
         
     @classmethod
-    def from_checkpoint(cls, checkpoint_path, vocab_size, d_model, max_seq_len, 
+    def from_checkpoint(cls, checkpoint_path, tokenizer, vocab_size, d_model, max_seq_len, 
                        pad_idx, n_heads, transformer_depth, mlp_ratio=4):
         """
         Load model from checkpoint directory.
         
         Args:
             checkpoint_path: Path to checkpoint directory containing model/*.npy files
-            Other args: Model architecture parameters
+            tokenizer: Tokenizer object (from tokenizers import Tokenizer)
+            vocab_size, d_model, max_seq_len, pad_idx, n_heads, transformer_depth: Model architecture parameters
+            mlp_ratio: MLP expansion ratio (default: 4)
         """
         # Create model with same architecture
         model = Model(
@@ -115,8 +114,16 @@ class InferenceEngine:
 
 
 if __name__ == "__main__":
+    from tokenizers import Tokenizer
+    
     # Example usage
     CHECKPOINT_PATH = "checkpoints/pretraining"
+    TOKENIZER_PATH = "tokenizer/tokenizer.json"  # Adjust to your tokenizer path
+    
+    # Load tokenizer
+    print("Loading tokenizer...")
+    tokenizer = Tokenizer.from_file(TOKENIZER_PATH)
+    
     VOCAB_SIZE = len(tokenizer.get_vocab())
     D_MODEL = 1024
     N_HEADS = 16
@@ -127,6 +134,7 @@ if __name__ == "__main__":
     print("Loading model from checkpoint...")
     engine = InferenceEngine.from_checkpoint(
         checkpoint_path=CHECKPOINT_PATH,
+        tokenizer=tokenizer,
         vocab_size=VOCAB_SIZE,
         d_model=D_MODEL,
         max_seq_len=MAX_SEQ_LEN,
