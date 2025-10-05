@@ -4,6 +4,7 @@ import os
 import dlx as dlx
 from dlx import xp
 from gpt1.training.model import Model
+from dlx.nn.optim import AdamW
 import numpy as np
 
 
@@ -41,20 +42,9 @@ class InferenceEngine:
             mini_batch_per_step=1,  # Not used for inference
             mlp_ratio=mlp_ratio
         )
-        
-        # Load parameters from checkpoint
-        model_dir = os.path.join(checkpoint_path, "model")
-        if not os.path.exists(model_dir):
-            raise ValueError(f"Model directory not found: {model_dir}")
-        
-        params = model.parameters()
-        for param_name, param_tensor in params.items():
-            param_path = os.path.join(model_dir, f"{param_name}.npy")
-            if not os.path.exists(param_path):
-                raise ValueError(f"Parameter file not found: {param_path}")
-            param_tensor.data = xp.array(np.load(param_path))
-        
-        print(f"Loaded {len(params)} parameters from {checkpoint_path}")
+
+        optim = AdamW(model.parameters(), precision=(np.float32, np.float32))
+        optim.load_state(os.path.join(checkpoint_path, "optimizer.pt"))
         
         return cls(model, tokenizer)
     
