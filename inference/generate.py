@@ -43,6 +43,12 @@ class InferenceEngine:
             mlp_ratio=mlp_ratio
         )
 
+        print(model.num_parameters)
+        for name, param in model.parameters().items():
+            print(name, param.shape)
+
+        print(f"Loading model from {checkpoint_path}")
+
         optim = AdamW(model.parameters(), precision=(np.float32, np.float32))
         optim.load_state(os.path.join(checkpoint_path, "optimizer.pt"))
         
