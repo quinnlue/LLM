@@ -16,7 +16,7 @@ class InferenceEngine:
         
     @classmethod
     def from_checkpoint(cls, checkpoint_path, tokenizer, vocab_size, d_model, max_seq_len, 
-                       pad_idx, n_heads, transformer_depth, mlp_ratio=4):
+                       pad_idx, n_heads, transformer_depth, mlp_ratio=4, lora=False, lora_r=8, lora_alpha=8):
         """
         Load model from checkpoint directory.
         
@@ -40,7 +40,10 @@ class InferenceEngine:
             checkpoint_dir="",  # Not used for inference
             epochs=0,  # Not used for inference
             mini_batch_per_step=1,  # Not used for inference
-            mlp_ratio=mlp_ratio
+            mlp_ratio=mlp_ratio,
+            lora=lora,
+            lora_r=lora_r,
+            lora_alpha=lora_alpha
         )
 
         print(model)
@@ -128,7 +131,8 @@ if __name__ == "__main__":
     MAX_SEQ_LEN = 512
     PAD_IDX = 0
     DEPTH = 12
-    
+    MLP_RATIO = 4
+
     print("Loading model from checkpoint...")
     engine = InferenceEngine.from_checkpoint(
         checkpoint_path=CHECKPOINT_PATH,
@@ -138,7 +142,11 @@ if __name__ == "__main__":
         max_seq_len=MAX_SEQ_LEN,
         pad_idx=PAD_IDX,
         n_heads=N_HEADS,
-        transformer_depth=DEPTH
+        transformer_depth=DEPTH,
+        mlp_ratio=MLP_RATIO,
+        lora=True,
+        lora_r=8,
+        lora_alpha=8
     )
     
     print("\nGenerating text...")
