@@ -10,7 +10,7 @@ import numpy as np
 
 
 class InferenceEngine:
-    def __init__(self, model: Model, tokenizer: Tokenizer):
+    def __init__(self, model: Model, tokenizer):
         self.model = model
         self.tokenizer = tokenizer
         self.model.is_training = False  # Set to eval mode
