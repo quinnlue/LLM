@@ -114,14 +114,14 @@ How can I create a balanced diet?
 ```text
 The diet can be structured in several ways: 
     1. Balance: Start with a healthy balance of fats and proteins, such as saturated fat, 
-        carbohydrates, and carbohydrates. 
+       carbohydrates, and carbohydrates. 
     2. Dietary Supplements: Regular dietary supplements, such as fruit, vegetables, whole 
-        grains, and nuts, are important for a healthy diet. 
+       grains, and nuts, are important for a healthy diet. 
     3. Dietary counseling: Regular counseling is important for both parents and children to 
-        help ensure they are taking proper care of themselves. 
+       help ensure they are taking proper care of themselves. 
     4. Food counseling: Regular counseling is an essential part of any healthy eating plan. 
     5. Nutrition counseling: Eating meals that do not include all foods at once is important 
-        to prevent overeating and prevent overeating. 
+       to prevent overeating and prevent overeating. 
 
 It's important to note that this is just a starting point. Different diets can have different 
 effects, and some people may still gain weight or gain muscle mass. 
