@@ -186,7 +186,7 @@ class InferenceEngine:
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
             if stream:
                 print(self.tokenizer.decode(xp.asnumpy(next_token_array[0]).tolist()), end="", flush=True)
-                if len(idx[0]) % 25 == 0:
+                if current_position % 25 == 0:
                     print()
             idx = xp.concatenate([idx, next_token_array], axis=1)
 
