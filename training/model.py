@@ -91,7 +91,10 @@ class Model(Module):
     def forward(self, idx, kv_cache: xp.ndarray | None = None, current_position: int = 0):
         x = self.e.get_sentence_embedding(idx)
         for i, head in enumerate(self.heads):
-            x = head(x, kv_cache['k'][i], kv_cache['v'][i], current_position)
+            if kv_cache is not None:
+                x = head(x, kv_cache['k'][i], kv_cache['v'][i], current_position)
+            else:
+                x = head(x)
         logits = self.project(x)
         return logits
     

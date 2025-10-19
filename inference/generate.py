@@ -51,7 +51,7 @@ class InferenceEngine:
         
         return cls(model, tokenizer)
     
-    def generate(self, prompt, max_new_tokens=50, temperature=1.0, top_k=None):
+    def generate(self, prompt, max_new_tokens=50, temperature=1.0, top_k=None, stream=False):
         """
         Generate text continuation from a prompt.
         
@@ -68,20 +68,29 @@ class InferenceEngine:
         encoded = self.tokenizer.encode(prompt)
         idx = xp.array([encoded.ids], dtype=xp.int32)
 
-        current_position = idx.shape[1] - 1
 
         # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
         kv_shape = (self.model.transformer_depth, 1, self.model.max_seq_len, self.model.d_model)
         kv_cache = {
-            "k": Tensor(xp.zeros(kv_shape)),
-            "v": Tensor(xp.zeros(kv_shape))
+            "k": Tensor(np.zeros(kv_shape)),
+            "v": Tensor(np.zeros(kv_shape))
         }
-        
-        for _ in range(max_new_tokens):
+
+
+        for i in range(len(idx[0])):
+            current_position = i
+            # print(f"Print kv cache after {i} tokens (position {current_position}) (in the prompt part of idx)")
+            # print(kv_cache)
+            logits = self.model.forward(idx[:,:i+1], kv_cache, current_position)
+
+
+        for _ in range(10):
+            # print(f"Print kv cache after {i} tokens (position {current_position}) (in the generated part of idx)")
+            # print(kv_cache)
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             logits = logits / temperature
-            logits_np = xp.asnumpy(logits.data[0])
+            logits_np = logits.data[0]
             if top_k is not None:
                 top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
                 mask = np.full_like(logits_np, -float('inf'))
@@ -92,18 +101,57 @@ class InferenceEngine:
             probs = np.exp(logits_np - np.max(logits_np))
             probs = probs / np.sum(probs)
             next_token = np.random.choice(len(probs), p=probs)
-            
+            if stream:
+                print(self.tokenizer.decode(next_token), end="", flush=True)
             # Append to sequence
-            next_token_array = xp.array([[next_token]], dtype=xp.int32)
-            idx = xp.concatenate([idx, next_token_array], axis=1)
-            
+            next_token_array = np.array([[next_token]], dtype=np.int32)
+            idx = np.concatenate([idx, next_token_array], axis=1)
+
             if next_token == self.tokenizer.token_to_id("[EOS]"):
                 break
+
+            
+
             current_position += 1
+    
+        return self.tokenizer
+
+        # current_position = idx.shape[1] - 1
+
+        # # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
+        # kv_shape = (self.model.transformer_depth, 1, self.model.max_seq_len, self.model.d_model)
+        # kv_cache = {
+        #     "k": Tensor(xp.zeros(kv_shape)),
+        #     "v": Tensor(xp.zeros(kv_shape))
+        # }
         
-        # Decode back to text
-        generated_ids = xp.asnumpy(idx[0]).tolist()
-        return self.tokenizer.decode(generated_ids)
+        # for _ in range(max_new_tokens):
+        #     logits = self.model.forward(idx, kv_cache, current_position)
+        #     logits = logits[:, -1, :]
+        #     logits = logits / temperature
+        #     logits_np = xp.asnumpy(logits.data[0])
+        #     if top_k is not None:
+        #         top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
+        #         mask = np.full_like(logits_np, -float('inf'))
+        #         mask[top_k_idx] = logits_np[top_k_idx]
+        #         logits_np = mask
+            
+        #     # Sample from distribution
+        #     probs = np.exp(logits_np - np.max(logits_np))
+        #     probs = probs / np.sum(probs)
+        #     next_token = np.random.choice(len(probs), p=probs)
+            
+        #     # Append to sequence
+        #     next_token_array = xp.array([[next_token]], dtype=xp.int32)
+        #     idx = xp.concatenate([idx, next_token_array], axis=1)
+            
+        #     if next_token == self.tokenizer.token_to_id("[EOS]"):
+        #         break
+        #     current_position += 1
+        
+        # # Decode back to text
+        # generated_ids = xp.asnumpy(idx[0]).tolist()
+        # return self.tokenizer.decode(generated_ids)
 
 
 if __name__ == "__main__":
