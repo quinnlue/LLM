@@ -45,6 +45,16 @@ class Model(Module):
         self.epochs = epochs
         self.mini_batch_per_step = mini_batch_per_step
 
+        self.transformer_depth = transformer_depth
+        self.n_heads = n_heads
+        self.max_seq_len = max_seq_len
+        self.d_model = d_model
+        self.mlp_ratio = mlp_ratio
+        self.lora = lora
+        self.lora_r = lora_r
+        self.lora_alpha = lora_alpha
+        self.head_dim = d_model // n_heads
+
         # VARIABLES ---------------------------------------
         self.best_val_loss = float("inf")
 
