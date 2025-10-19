@@ -1,5 +1,6 @@
 import sys
 import os
+import heapq
 
 import dlx as dlx
 from dlx import xp
@@ -52,12 +53,74 @@ class InferenceEngine:
         
         return cls(model, tokenizer)
     
+    def _sample_token(self, logits_np, temperature=1.0, top_k=None, top_p=None, repeat_penalty=None, repeated_mask=None):
+        """
+        Sample a token from logits using various sampling strategies.
+        
+        Args:
+            logits_np: Logits array (numpy)
+            temperature: Sampling temperature
+            top_k: If set, only sample from top k tokens
+            top_p: If set, use nucleus sampling
+            repeat_penalty: If set, penalize repeated tokens
+            repeated_mask: Boolean mask of repeated tokens
+            
+        Returns:
+            Selected token ID
+        """
+        # Apply temperature scaling
+        logits_np = logits_np / temperature
+        
+        # Apply repeat penalty if specified
+        if repeat_penalty is not None and repeated_mask is not None:
+            logits_np[repeated_mask & (logits_np > 0)] /= repeat_penalty
+            logits_np[repeated_mask & (logits_np < 0)] *= repeat_penalty
+        
+        # Apply top-k filtering if specified
+        if top_k is not None:
+            top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
+            mask = np.full_like(logits_np, -float('inf'))
+            mask[top_k_idx] = logits_np[top_k_idx]
+            logits_np = mask
+        
+        # Convert to probabilities
+        probs = np.exp(logits_np - np.max(logits_np))
+        probs = probs / np.sum(probs)
+        
+        # Apply top-p (nucleus sampling) if specified
+        if top_p is not None:
+            heap = []
+            for token_id, prob in enumerate(probs):
+                if prob > 0:
+                    heapq.heappush(heap, (-prob, token_id))
+            
+            # Select tokens until cumulative probability >= top_p
+            selected_tokens = []
+            cumulative_prob = 0.0
+            
+            while heap and cumulative_prob < top_p:
+                neg_prob, token_id = heapq.heappop(heap)
+                prob = -neg_prob
+                selected_tokens.append(token_id)
+                cumulative_prob += prob
+            
+            # Mask out non-selected tokens
+            mask = np.full_like(probs, 0.0)
+            mask[selected_tokens] = probs[selected_tokens]
+            probs = mask
+            probs = probs / np.sum(probs)
+        
+        # Sample from distribution
+        next_token = np.random.choice(len(probs), p=probs)
+        return next_token
+    
     def generate(
         self, 
         prompt: str, 
         max_new_tokens: int = 500, 
         temperature: float = 1.0, 
-        top_k: int | None = None, 
+        top_k: int = 80, 
+        top_p: float | None = None,
         stream: bool = False,
         repeat_penalty: float | None = None
     ) -> str:
@@ -69,6 +132,7 @@ class InferenceEngine:
             max_new_tokens: Maximum number of tokens to generate
             temperature: Sampling temperature (higher = more random)
             top_k: If set, only sample from top k tokens
+            top_p: If set, use nucleus sampling (select tokens with cumulative probability >= top_p)
             stream: If True, stream the generated text
             repeat_penalty: If set, penalize the generation of repeated tokens
         
@@ -98,28 +162,25 @@ class InferenceEngine:
 
 
         for _ in range(max_new_tokens):
-
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
-            logits = logits / temperature
-
-            logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
-
-            if repeat_penalty is not None:
-                logits_np[repeated_mask & (logits_np > 0)] /= repeat_penalty
-                logits_np[repeated_mask & (logits_np < 0)] *= repeat_penalty
-
-            if top_k is not None:
-                top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
-                mask = np.full_like(logits_np, -float('inf'))
-                mask[top_k_idx] = logits_np[top_k_idx]
-                logits_np = mask
             
-            # Sample from distribution
-            probs = np.exp(logits_np - np.max(logits_np))
-            probs = probs / np.sum(probs)
-            next_token = np.random.choice(len(probs), p=probs)
-            repeated_mask[next_token] = True
+            # Convert to numpy for sampling
+            logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
+            
+            # Sample token using the extracted sampling logic
+            next_token = self._sample_token(
+                logits_np=logits_np,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                repeat_penalty=repeat_penalty,
+                repeated_mask=repeated_mask
+            )
+            
+            # Update repeated mask for repeat penalty
+            if repeat_penalty is not None:
+                repeated_mask[next_token] = True
 
             # Append to sequence
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
@@ -174,6 +235,6 @@ if __name__ == "__main__":
     
     print("\nGenerating text...")
     prompt = "Once upon a time"
-    generated = engine.generate(prompt, max_new_tokens=50, temperature=0.8)
+    generated = engine.generate(prompt, max_new_tokens=50, temperature=0.8, top_p=0.9)
     print(f"\nPrompt: {prompt}")
     print(f"Generated: {generated}")
