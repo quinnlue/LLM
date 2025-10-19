@@ -85,7 +85,7 @@ class InferenceEngine:
             logits = self.model.forward(idx[:,:i+1], kv_cache, current_position)
 
 
-        for _ in range(10):
+        for _ in range(max_new_tokens):
             # print(f"Print kv cache after {i} tokens (position {current_position}) (in the generated part of idx)")
             # print(kv_cache)
             logits = self.model.forward(idx, kv_cache, current_position)
