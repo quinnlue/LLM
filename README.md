@@ -161,14 +161,16 @@ Write me a love story.
     new friend.
 
     He had always wanted to be my friend so much that it seemed like every time we talked about 
-    something important or interesting, he would say "thank you." He never really cared if anything happened because he just felt so good knowing that everyone else around him wasn't too bad at what they did together!
+    something important or interesting, he would say "thank you." He never really cared if 
+    anything happened because he just felt so good knowing that everyone else around him wasn't 
+    too bad at what they did together!
 
     So after being through this whole process all over again, I decided to give up on him 
     completely. I didn't want to let him down any more than ever before giving up entirely.
 
     And then, as I thought about it now, I realized how much I needed him - even though I know 
-     wouldn't have done that without him. I could not help myself from thinking that everything 
-     ight go wrong during this entire journey.
+    wouldn't have done that without him. I could not help myself from thinking that everything 
+    right go wrong during this entire journey.
 
     Now, I'm glad to hear that I finally gave up hope...but still, I couldn't resist taking solace 
     in the fact that I could do something truly special once again.
@@ -252,7 +254,8 @@ Write me a python function to print "Hello, world!".
 
     This will print the message "Hello, world!".
 
-    If you want to use this function in your web page or any other application that uses Python, please let me know.
+    If you want to use this function in your web page or any other application that uses 
+    Python, please let me know.
 
 
 </div>
