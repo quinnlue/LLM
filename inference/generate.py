@@ -112,7 +112,7 @@ class InferenceEngine:
             idx = xp.concatenate([idx, next_token_array], axis=1)
 
             if next_token == self.tokenizer.token_to_id("[EOS]"):
-                print("[EOS]")
+                print("[EOS]", flush=True)
                 break
 
             
