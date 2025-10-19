@@ -158,11 +158,8 @@ How can I develop better habits for learning new skills?
     making changes yourself if needed without having any prior knowledge regarding how to 
     improve oneself.
 
-
-
-
 </div>
-</div>
+
 ---
 
 ## Example 2: Creative Writing
