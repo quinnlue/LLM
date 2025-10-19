@@ -3,13 +3,14 @@ import os
 
 import dlx as dlx
 from dlx import xp
+from dlx.nn.tensor import Tensor
 from gpt1.training.model import Model
 from dlx.nn.optim import AdamW
 import numpy as np
 
 
 class InferenceEngine:
-    def __init__(self, model, tokenizer):
+    def __init__(self, model: Model, tokenizer: Tokenizer):
         self.model = model
         self.tokenizer = tokenizer
         self.model.is_training = False  # Set to eval mode
@@ -26,7 +27,6 @@ class InferenceEngine:
             vocab_size, d_model, max_seq_len, pad_idx, n_heads, transformer_depth: Model architecture parameters
             mlp_ratio: MLP expansion ratio (default: 4)
         """
-        # Create model with same architecture
         model = Model(
             vocab_size=vocab_size,
             d_model=d_model,
@@ -34,12 +34,12 @@ class InferenceEngine:
             pad_idx=pad_idx,
             n_heads=n_heads,
             transformer_depth=transformer_depth,
-            checkpoint_interval_seconds=0,  # Not used for inference
-            train_dir="",  # Not used for inference
-            validation_dir="",  # Not used for inference
-            checkpoint_dir="",  # Not used for inference
-            epochs=0,  # Not used for inference
-            mini_batch_per_step=1,  # Not used for inference
+            checkpoint_interval_seconds=0,
+            train_dir="",
+            validation_dir="",
+            checkpoint_dir="",
+            epochs=0,
+            mini_batch_per_step=1,
             mlp_ratio=mlp_ratio,
             lora=lora,
             lora_r=lora_r,
@@ -71,20 +71,19 @@ class InferenceEngine:
         # Encode prompt
         encoded = self.tokenizer.encode(prompt)
         idx = xp.array([encoded.ids], dtype=xp.int32)
+
+        # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
+        kv_shape = (self.model.transformer_depth, 1, self.model.max_seq_len, self.model.d_model)
+        kv_cache = {
+            "k": Tensor(xp.zeros(kv_shape)),
+            "v": Tensor(xp.zeros(kv_shape))
+        }
         
-        # Generate tokens
         for _ in range(max_new_tokens):
-            # Get predictions for the last token
-            logits = self.model.forward(idx)  # (1, seq_len, vocab_size)
-            logits = logits[:, -1, :]  # (1, vocab_size)
-            
-            # Apply temperature
+            logits = self.model.forward(idx, kv_cache)
+            logits = logits[:, -1, :]
             logits = logits / temperature
-            
-            # Get logits as numpy array
             logits_np = xp.asnumpy(logits.data[0])
-            
-            # Apply top-k if specified
             if top_k is not None:
                 top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
                 mask = np.full_like(logits_np, -float('inf'))

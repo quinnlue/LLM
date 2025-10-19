@@ -1,30 +1,25 @@
 import collections
 import time
-from typing import Tuple, Deque
+from typing import Tuple
 
 class RunningLossTracker:
     def __init__(self, window_sizes: Tuple[int, int, int] = (100, 1000, 10000)):
         self.window_100, self.window_1k, self.window_10k = window_sizes
         
-        # Deques for storing values
         self.loss_window_100 = collections.deque(maxlen=self.window_100)
         self.loss_window_1k = collections.deque(maxlen=self.window_1k)
         self.loss_window_10k = collections.deque(maxlen=self.window_10k)
         
-        # Running sums for efficient calculation
         self.sum_100 = 0.0
         self.sum_1k = 0.0
         self.sum_10k = 0.0
         
-        # Counters for current window sizes
         self.count_100 = 0
         self.count_1k = 0
         self.count_10k = 0
     
     def update(self, loss_value: float):
-        # Update 100-window
         if len(self.loss_window_100) == self.window_100:
-            # Remove oldest value from sum
             self.sum_100 -= self.loss_window_100[0]
         else:
             self.count_100 += 1
@@ -32,9 +27,7 @@ class RunningLossTracker:
         self.loss_window_100.append(loss_value)
         self.sum_100 += loss_value
         
-        # Update 1K-window
         if len(self.loss_window_1k) == self.window_1k:
-            # Remove oldest value from sum
             self.sum_1k -= self.loss_window_1k[0]
         else:
             self.count_1k += 1
@@ -42,9 +35,7 @@ class RunningLossTracker:
         self.loss_window_1k.append(loss_value)
         self.sum_1k += loss_value
         
-        # Update 10K-window
         if len(self.loss_window_10k) == self.window_10k:
-            # Remove oldest value from sum
             self.sum_10k -= self.loss_window_10k[0]
         else:
             self.count_10k += 1
@@ -78,19 +69,15 @@ class ProgressBarManager:
         self.loss_tracker = RunningLossTracker()
     
     def update_progress(self, loss_value: float, optimizer, pbar) -> None:
-        """Update progress bar with current metrics"""
         self.current_step += 1
         self.loss_tracker.update(loss_value)
         
-        # Get metrics
         running_100_loss, running_1k_loss, running_10k_loss = self.loss_tracker.get_running_losses()
         steps_per_sec = calculate_steps_per_sec(self.current_step, self.start_time)
         fraction = format_fraction(self.current_step, self.total_steps)
         
-        # Get current learning rate from optimizer
         current_lr = optimizer.get_lr(optimizer.t)
         
-        # Update progress bar
         pbar.set_postfix(
             loss=f"{running_100_loss:.4f}",
             ema_1k=f"{running_1k_loss:.4f}",

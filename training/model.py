@@ -78,12 +78,12 @@ class Model(Module):
         )
         # --------------------------------------------------
     
-    def forward(self, idx):
+    def forward(self, idx, kv_cache: xp.ndarray | None = None):
         x = self.e.get_sentence_embedding(idx)
-        for head in self.heads:
-            x = head(x)
-        x = self.project(x)
-        return x
+        for i, head in enumerate(self.heads):
+            x = head(x, kv_cache['k'][i], kv_cache['v'][i])
+        logits = self.project(x)
+        return logits, kv_cache + [x]
     
     def evaluate(self, dl):
         losses = []
