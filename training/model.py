@@ -32,7 +32,6 @@ class Model(Module):
             lora_r: int = 16,
             lora_alpha: int = 16
         ):
-        self.architecture = {}
         super().__init__()
 
         # CONSTANTS ---------------------------------------

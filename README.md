@@ -1,6 +1,6 @@
 ## 🧠 Sample Generation
 
-### Example 1: Health & Nutrition
+### Example 1: General Q&A
 
 **Prompt:**
 ```
@@ -81,10 +81,6 @@ But alas, I have no idea why I've not become one since then. I just know that th
 
 ---
 
-
-
-
-
 ### Example 3: Code Generation
 
 **Prompt 1:**
@@ -93,9 +89,9 @@ Write me a python function to print "Hello, world!".
 ```
 
 **Hyperparameters:**
-- `temperature`: 0.3
+- `temperature`: 0.2
 - `top_k`: 30
-- `top_p`: 0.9
+- `top_p`: 0.8
 - `repeat_penalty`: 1.05
 
 **Model Output:**
@@ -106,20 +102,12 @@ print("Hello, world!")
 
 This will print the message "Hello, world!".
 
-If you want to use this function in your web page or any other application that uses Python, please let me know.[EOS]
+If you want to use this function in your web page or any other application that uses Python, please let me know.
 ```
 
----
 
+##  Usage
 
+To test generation, a notebooks is available
 
-
-
-
-## 🚀 Usage
-
-To generate text with your trained model:
-
-```bash
-python inference/generate.py
-```
+https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing
