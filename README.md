@@ -28,17 +28,6 @@
 
 </div>
 
-<style>
-:root { --model-output-line-width: 72ch; }
-.model-output pre {
-  max-width: var(--model-output-line-width);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  margin: 0;
-}
-</style>
-
 ---
 
 ## Model Architecture & Training Details
@@ -119,20 +108,19 @@ How can I create a balanced diet?
 
 </div>
 
-<div class="model-output" style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
 ### Model Output:
-<pre><code>
-The diet can be structured in several ways: 
-    1. Balance: Start with a healthy balance of fats and proteins, such as saturated fat, carbohydrates, and carbohydrates. 
-    2. Dietary Supplements: Regular dietary supplements, such as fruit, vegetables, whole grains, and nuts, are important for a healthy diet. 
-    3. Dietary counseling: Regular counseling is important for both parents and children to help ensure they are taking proper care of themselves. 
-    4. Food counseling: Regular counseling is an essential part of any healthy eating plan. 5. Nutrition counseling: Eating meals that do not include all foods at once is important to prevent overeating and prevent overeating. 
 
-It's important to note that this is just a starting point. Different diets can have different effects, and some people may still gain weight or gain muscle mass. 
+    The diet can be structured in several ways: 
+        1. Balance: Start with a healthy balance of fats and proteins, such as saturated fat, carbohydrates, and carbohydrates. 
+        2. Dietary Supplements: Regular dietary supplements, such as fruit, vegetables, whole grains, and nuts, are important for a healthy diet. 
+        3. Dietary counseling: Regular counseling is important for both parents and children to help ensure they are taking proper care of themselves. 
+        4. Food counseling: Regular counseling is an essential part of any healthy eating plan. 5. Nutrition counseling: Eating meals that do not include all foods at once is important to prevent overeating and prevent overeating. 
 
-However, it's important to be aware of your own body and to plan ahead!
-</code></pre>
+    It's important to note that this is just a starting point. Different diets can have different effects, and some people may still gain weight or gain muscle mass. 
+
+    However, it's important to be aware of your own body and to plan ahead!
 
 </div>
 
@@ -158,20 +146,19 @@ Write me a love story.
 
 </div>
 
-<div class="model-output" style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
 ### Model Output:
-<pre><code>
-I was in the middle of my life when I met my future self. He had been diagnosed with cancer and he knew that there were many things to be grateful for, but one thing stood out most: his new friend.
 
-He had always wanted to be my friend so much that it seemed like every time we talked about something important or interesting, he would say "thank you." He never really cared if anything happened because he just felt so good knowing that everyone else around him wasn't too bad at what they did together!
+    I was in the middle of my life when I met my future self. He had been diagnosed with cancer and he knew that there were many things to be grateful for, but one thing stood out most: his new friend.
 
-So after being through this whole process all over again, I decided to give up on him completely. I didn't want to let him down any more than ever before giving up entirely.
+    He had always wanted to be my friend so much that it seemed like every time we talked about something important or interesting, he would say "thank you." He never really cared if anything happened because he just felt so good knowing that everyone else around him wasn't too bad at what they did together!
 
-And then, as I thought about it now, I realized how much I needed him - even though I know I wouldn't have done that without him. I could not help myself from thinking that everything might go wrong during this entire journey.
+    So after being through this whole process all over again, I decided to give up on him completely. I didn't want to let him down any more than ever before giving up entirely.
 
-Now, I'm glad to hear that I finally gave up hope...but still, I couldn't resist taking solace in the fact that I could do something truly special once again.
-</code></pre>
+    And then, as I thought about it now, I realized how much I needed him - even though I know I wouldn't have done that without him. I could not help myself from thinking that everything might go wrong during this entire journey.
+
+    Now, I'm glad to hear that I finally gave up hope...but still, I couldn't resist taking solace in the fact that I could do something truly special once again.
 
 </div>
 
@@ -196,19 +183,19 @@ Write me a short story about alien abduction.
 <div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
 ### Model Output:
-```text
-As I was reading this book, my heart started to race around the room as I listened intently for clues about what was going on in the world that day.
 
-I felt like I had been transported into a different dimension of reality by an ancient alien who lived tens of thousands of years ago and gave us all his wisdom!
+    As I was reading this book, my heart started to race around the room as I listened intently for clues about what was going on in the world that day.
 
-My brain went through some really weird things when I began to read books again... but it wasn't until after I'd finished reading the first chapter that I realized how much more bizarrely fantastical my thoughts were than they should be at any moment.
+    I felt like I had been transported into a different dimension of reality by an ancient alien who lived tens of thousands of years ago and gave us all his wisdom!
 
-And then I remembered something: my mind is so fucking crazy because of these strange creatures living inside our bodies....and yet we're still mesmerized with them now!!!!!
+    My brain went through some really weird things when I began to read books again... but it wasn't until after I'd finished reading the first chapter that I realized how much more bizarrely fantastical my thoughts were than they should be at any moment.
 
-So yeah, I loved reading books back then -- especially those that told stories about aliens or supernatural beings from the past!
+    And then I remembered something: my mind is so fucking crazy because of these strange creatures living inside our bodies....and yet we're still mesmerized with them now!!!!!
 
-But alas, I have no idea why I've not become one since then. I just know that there's nothing quite like it anymore without knowing the answers too :)
-```
+    So yeah, I loved reading books back then -- especially those that told stories about aliens or supernatural beings from the past!
+
+    But alas, I have no idea why I've not become one since then. I just know that there's nothing quite like it anymore without knowing the answers too :)
+
 
 </div>
 
@@ -235,16 +222,18 @@ Write me a python function to print "Hello, world!".
 
 </div>
 
-<div class="model-output" style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
 ### Model Output:
-<pre><code>
-print("Hello, world!")
 
-This will print the message "Hello, world!".
+    ```python
+    print("Hello, world!")
+    ```
 
-If you want to use this function in your web page or any other application that uses Python, please let me know.
-</code></pre>
+    This will print the message "Hello, world!".
+
+    If you want to use this function in your web page or any other application that uses Python, please let me know.
+
 
 </div>
 
