@@ -143,14 +143,14 @@ class InferenceEngine:
             Generated text as string
         """
         # Encode prompt
-        encoded = [self.prompter_id] + self.tokenizer.encode(prompt) + [self.assistant_id]
+        encoded = [self.prompter_id] + self.tokenizer.encode(prompt).ids + [self.assistant_id]
 
 
         if repeat_penalty is not None:
             repeated_mask = np.zeros((self.model.vocab_size,), dtype=np.bool_)
-            repeated_mask[encoded.ids] = True
+            repeated_mask[encoded] = True
 
-        idx = xp.array([encoded.ids], dtype=xp.int32)
+        idx = xp.array([encoded], dtype=xp.int32)
 
 
         # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
