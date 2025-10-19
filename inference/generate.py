@@ -68,6 +68,8 @@ class InferenceEngine:
         encoded = self.tokenizer.encode(prompt)
         idx = xp.array([encoded.ids], dtype=xp.int32)
 
+        current_position = idx.shape[1] - 1
+
         # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
         kv_shape = (self.model.transformer_depth, 1, self.model.max_seq_len, self.model.d_model)
         kv_cache = {
@@ -76,7 +78,7 @@ class InferenceEngine:
         }
         
         for _ in range(max_new_tokens):
-            logits = self.model.forward(idx, kv_cache)
+            logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             logits = logits / temperature
             logits_np = xp.asnumpy(logits.data[0])
@@ -95,10 +97,9 @@ class InferenceEngine:
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
             idx = xp.concatenate([idx, next_token_array], axis=1)
             
-            # Stop if we hit EOS token (if your tokenizer has one)
-            # Uncomment and adjust if you have an EOS token
-            # if next_token == eos_token_id:
-            #     break
+            if next_token == self.model.tokenizer.token_to_id("[EOS]"):
+                break
+            current_position += 1
         
         # Decode back to text
         generated_ids = xp.asnumpy(idx[0]).tolist()
