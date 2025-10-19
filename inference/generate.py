@@ -112,6 +112,7 @@ class InferenceEngine:
             idx = xp.concatenate([idx, next_token_array], axis=1)
 
             if next_token == self.tokenizer.token_to_id("[EOS]"):
+                print("[EOS]")
                 break
 
             
@@ -119,44 +120,6 @@ class InferenceEngine:
             current_position += 1
     
         return self.tokenizer.decode(xp.asnumpy(idx[0]).tolist()) if self.is_cuda else self.tokenizer.decode(idx[0].data[0].tolist())
-
-        # current_position = idx.shape[1] - 1
-
-        # # kv_cache is of shape (trasnformer_depth, batch_size, max_seq_len, d_model)
-        # kv_shape = (self.model.transformer_depth, 1, self.model.max_seq_len, self.model.d_model)
-        # kv_cache = {
-        #     "k": Tensor(xp.zeros(kv_shape)),
-        #     "v": Tensor(xp.zeros(kv_shape))
-        # }
-        
-        # for _ in range(max_new_tokens):
-        #     logits = self.model.forward(idx, kv_cache, current_position)
-        #     logits = logits[:, -1, :]
-        #     logits = logits / temperature
-        #     logits_np = xp.asnumpy(logits.data[0])
-        #     if top_k is not None:
-        #         top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
-        #         mask = np.full_like(logits_np, -float('inf'))
-        #         mask[top_k_idx] = logits_np[top_k_idx]
-        #         logits_np = mask
-            
-        #     # Sample from distribution
-        #     probs = np.exp(logits_np - np.max(logits_np))
-        #     probs = probs / np.sum(probs)
-        #     next_token = np.random.choice(len(probs), p=probs)
-            
-        #     # Append to sequence
-        #     next_token_array = xp.array([[next_token]], dtype=xp.int32)
-        #     idx = xp.concatenate([idx, next_token_array], axis=1)
-            
-        #     if next_token == self.tokenizer.token_to_id("[EOS]"):
-        #         break
-        #     current_position += 1
-        
-        # # Decode back to text
-        # generated_ids = xp.asnumpy(idx[0]).tolist()
-        # return self.tokenizer.decode(generated_ids)
-
 
 if __name__ == "__main__":
     from tokenizers import Tokenizer
