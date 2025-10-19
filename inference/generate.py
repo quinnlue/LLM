@@ -97,7 +97,7 @@ class InferenceEngine:
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
             idx = xp.concatenate([idx, next_token_array], axis=1)
             
-            if next_token == self.model.tokenizer.token_to_id("[EOS]"):
+            if next_token == self.tokenizer.token_to_id("[EOS]"):
                 break
             current_position += 1
         
