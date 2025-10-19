@@ -46,10 +46,6 @@ class InferenceEngine:
             lora_alpha=lora_alpha
         )
 
-        for name, param in model.parameters().items():
-            print(name, param.shape)
-
-
         optim = AdamW(model.parameters(), precision=(np.float32, np.float32))
         optim.load_state(checkpoint_path)
         
