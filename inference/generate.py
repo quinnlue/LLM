@@ -13,7 +13,7 @@ class InferenceEngine:
     def __init__(self, model: Model, tokenizer):
         self.model = model
         self.tokenizer = tokenizer
-        self.model.is_training = False  # Set to eval mode
+        self.model.is_training = False
         self.is_cuda = xp.__name__ == "cupy"
         
     @classmethod
@@ -52,7 +52,15 @@ class InferenceEngine:
         
         return cls(model, tokenizer)
     
-    def generate(self, prompt, max_new_tokens=50, temperature=1.0, top_k=None, stream=False):
+    def generate(
+        self, 
+        prompt: str, 
+        max_new_tokens: int = 500, 
+        temperature: float = 1.0, 
+        top_k: int | None = None, 
+        stream: bool = False,
+        repeat_penalty: float | None = None
+    ) -> str:
         """
         Generate text continuation from a prompt.
         
@@ -61,12 +69,18 @@ class InferenceEngine:
             max_new_tokens: Maximum number of tokens to generate
             temperature: Sampling temperature (higher = more random)
             top_k: If set, only sample from top k tokens
+            stream: If True, stream the generated text
+            repeat_penalty: If set, penalize the generation of repeated tokens
         
         Returns:
             Generated text as string
         """
         # Encode prompt
         encoded = self.tokenizer.encode(prompt)
+        if repeat_penalty is not None:
+            repeated_mask = np.zeros((self.model.vocab_size,), dtype=np.bool_)
+            repeated_mask[encoded.ids] = True
+
         idx = xp.array([encoded.ids], dtype=xp.int32)
 
 
@@ -80,17 +94,17 @@ class InferenceEngine:
 
         for i in range(len(idx[0])):
             current_position = i
-            # print(f"Print kv cache after {i} tokens (position {current_position}) (in the prompt part of idx)")
-            # print(kv_cache)
             logits = self.model.forward(idx[:,:i+1], kv_cache, current_position)
 
 
         for _ in range(max_new_tokens):
-            # print(f"Print kv cache after {i} tokens (position {current_position}) (in the generated part of idx)")
-            # print(kv_cache)
+
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             logits = logits / temperature
+            if repeat_penalty is not None:
+                logits[repeated_mask & (logits > 0)] /= repeat_penalty
+                logits[repeated_mask & (logits < 0)] *= repeat_penalty
 
             logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
 
@@ -104,6 +118,7 @@ class InferenceEngine:
             probs = np.exp(logits_np - np.max(logits_np))
             probs = probs / np.sum(probs)
             next_token = np.random.choice(len(probs), p=probs)
+            repeated_mask[next_token] = True
 
             # Append to sequence
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
