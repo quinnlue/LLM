@@ -93,7 +93,7 @@ class InferenceEngine:
             logits = logits / temperature
 
             logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
-            
+
             if top_k is not None:
                 top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
                 mask = np.full_like(logits_np, -float('inf'))
@@ -107,8 +107,8 @@ class InferenceEngine:
             if stream:
                 print(self.tokenizer.decode(next_token), end="", flush=True)
             # Append to sequence
-            next_token_array = np.array([[next_token]], dtype=np.int32)
-            idx = np.concatenate([idx, next_token_array], axis=1)
+            next_token_array = xp.array([[next_token]], dtype=xp.int32)
+            idx = xp.concatenate([idx, next_token_array], axis=1)
 
             if next_token == self.tokenizer.token_to_id("[EOS]"):
                 break
