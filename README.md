@@ -96,7 +96,7 @@ This GPT-1 model is a decoder-only transformer trained from scratch on a single 
 
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
 
-### Prompt:
+### Prompt 1:
 ```text
 How can I create a balanced diet?
 ```
@@ -125,9 +125,12 @@ effects, and some people may still gain weight or gain muscle mass.
 However, it's important to be aware of your own body and to plan ahead!
 ```
 </div>
+
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+
 ### Prompt 2:
 ```text
-How can I develop better habits for learning new skills?.
+How can I develop better habits for learning new skills?
 ```
 
 </div>
