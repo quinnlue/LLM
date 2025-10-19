@@ -117,7 +117,7 @@ class InferenceEngine:
 
             current_position += 1
     
-        return self.tokenizer
+        return self.tokenizer.decode(xp.asnumpy(idx[0]).tolist()) if self.is_cuda else self.tokenizer.decode(idx[0].data[0].tolist())
 
         # current_position = idx.shape[1] - 1
 
