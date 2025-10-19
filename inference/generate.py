@@ -102,11 +102,12 @@ class InferenceEngine:
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             logits = logits / temperature
-            if repeat_penalty is not None:
-                logits[repeated_mask & (logits > 0)] /= repeat_penalty
-                logits[repeated_mask & (logits < 0)] *= repeat_penalty
 
             logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
+
+            if repeat_penalty is not None:
+                logits_np[repeated_mask & (logits_np > 0)] /= repeat_penalty
+                logits_np[repeated_mask & (logits_np < 0)] *= repeat_penalty
 
             if top_k is not None:
                 top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
