@@ -104,10 +104,11 @@ class InferenceEngine:
             probs = np.exp(logits_np - np.max(logits_np))
             probs = probs / np.sum(probs)
             next_token = np.random.choice(len(probs), p=probs)
-            if stream:
-                print(self.tokenizer.decode(next_token), end="", flush=True)
+
             # Append to sequence
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
+            if stream:
+                print(self.tokenizer.decode(xp.asnumpy(next_token_array[0]).tolist()), end="", flush=True)
             idx = xp.concatenate([idx, next_token_array], axis=1)
 
             if next_token == self.tokenizer.token_to_id("[EOS]"):
