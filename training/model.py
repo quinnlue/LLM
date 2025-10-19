@@ -93,7 +93,7 @@ class Model(Module):
         for i, head in enumerate(self.heads):
             x = head(x, kv_cache['k'][i], kv_cache['v'][i])
         logits = self.project(x)
-        return logits, kv_cache + [x]
+        return logits
     
     def evaluate(self, dl):
         losses = []
