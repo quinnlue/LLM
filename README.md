@@ -162,6 +162,7 @@ How can I develop better habits for learning new skills?
 
 
 </div>
+</div>
 ---
 
 ## Example 2: Creative Writing
