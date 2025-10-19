@@ -1,19 +1,37 @@
-## 🧠 Sample Generation
+<div align="center">
 
-### Example 1: General Q&A
+# Sample Generation
 
-**Prompt:**
-```
+*Explore the capabilities of our fine-tuned model with these diverse examples*
+
+</div>
+
+---
+
+## Example 1: General Q&A
+
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+
+### Prompt:
+```text
 How can I create a balanced diet?
 ```
 
-**Hyperparameters:**
+</div>
+
+<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
+
+### Hyperparameters:
 - `temperature`: 0.7
 - `top_k`: 50
 - `repeat_penalty`: None
 
-**Model Output:**
-```
+</div>
+
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+
+### Model Output:
+```text
 The diet can be structured in several ways: 
     1. Balance: Start with a healthy balance of fats and proteins, such as saturated fat, carbohydrates, and carbohydrates. 
     2. Dietary Supplements: Regular dietary supplements, such as fruit, vegetables, whole grains, and nuts, are important for a healthy diet. 
@@ -25,22 +43,34 @@ It's important to note that this is just a starting point. Different diets can h
 However, it's important to be aware of your own body and to plan ahead!
 ```
 
+</div>
+
 ---
 
-### Example 2: Creative Writing
+## Example 2: Creative Writing
 
-**Prompt 1:**
-```
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+
+### Prompt 1:
+```text
 Write me a love story.
 ```
 
-**Hyperparameters:**
+</div>
+
+<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
+
+### Hyperparameters:
 - `temperature`: 0.5
 - `top_k`: 40
 - `repeat_penalty`: 1.05
 
-**Model Output:**
-```
+</div>
+
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+
+### Model Output:
+```text
 I was in the middle of my life when I met my future self. He had been diagnosed with cancer and he knew that there were many things to be grateful for, but one thing stood out most: his new friend.
 
 He had always wanted to be my friend so much that it seemed like every time we talked about something important or interesting, he would say "thank you." He never really cared if anything happened because he just felt so good knowing that everyone else around him wasn't too bad at what they did together!
@@ -52,20 +82,30 @@ And then, as I thought about it now, I realized how much I needed him - even tho
 Now, I'm glad to hear that I finally gave up hope...but still, I couldn't resist taking solace in the fact that I could do something truly special once again.
 ```
 
----
+</div>
 
-**Prompt 2:**
-```
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+
+### Prompt 2:
+```text
 Write me a short story about alien abduction.
 ```
 
-**Hyperparameters:**
+</div>
+
+<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
+
+### Hyperparameters:
 - `temperature`: 0.5
 - `top_k`: 40
 - `repeat_penalty`: 1.05
 
-**Model Output:**
-```
+</div>
+
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+
+### Model Output:
+```text
 As I was reading this book, my heart started to race around the room as I listened intently for clues about what was going on in the world that day.
 
 I felt like I had been transported into a different dimension of reality by an ancient alien who lived tens of thousands of years ago and gave us all his wisdom!
@@ -79,23 +119,35 @@ So yeah, I loved reading books back then -- especially those that told stories a
 But alas, I have no idea why I've not become one since then. I just know that there's nothing quite like it anymore without knowing the answers too :)
 ```
 
+</div>
+
 ---
 
-### Example 3: Code Generation
+## Example 3: Code Generation
 
-**Prompt 1:**
-```
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+
+### 📝 Prompt:
+```text
 Write me a python function to print "Hello, world!".
 ```
 
-**Hyperparameters:**
+</div>
+
+<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
+
+### ⚙️ Hyperparameters:
 - `temperature`: 0.2
 - `top_k`: 30
 - `top_p`: 0.8
 - `repeat_penalty`: 1.05
 
-**Model Output:**
-```
+</div>
+
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+
+### 🤖 Model Output:
+``````
 ```python
 print("Hello, world!")
 ```
@@ -103,11 +155,28 @@ print("Hello, world!")
 This will print the message "Hello, world!".
 
 If you want to use this function in your web page or any other application that uses Python, please let me know.
-```
+``````
 
+</div>
 
-##  Usage
+---
 
-To test generation, a notebooks is available
+<div align="center">
 
-https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing
+## Usage
+
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; color: white; margin: 30px 0; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+
+### Interactive Notebook Available
+
+<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+
+🔗 **[Try it on Google Colab](https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing)**
+
+*Click the link above to test the model's generation capabilities interactively*
+
+</div>
+
+</div>
+
+</div>
