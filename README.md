@@ -89,6 +89,10 @@ This GPT-1 model is a decoder-only transformer trained from scratch on a single 
 ---
 
 ## Example 1: General Q&A
+### Hyperparameters:
+- `temperature`: 0.7
+- `top_k`: 50
+- `repeat_penalty`: None
 
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
 
@@ -99,14 +103,6 @@ How can I create a balanced diet?
 
 </div>
 
-<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
-
-### Hyperparameters:
-- `temperature`: 0.7
-- `top_k`: 50
-- `repeat_penalty`: None
-
-</div>
 
 <div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
@@ -134,6 +130,11 @@ However, it's important to be aware of your own body and to plan ahead!
 
 ## Example 2: Creative Writing
 
+### Hyperparameters:
+- `temperature`: 0.5
+- `top_k`: 40
+- `repeat_penalty`: 1.05
+
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
 
 ### Prompt 1:
@@ -142,13 +143,6 @@ Write me a love story.
 ```
 
 </div>
-
-<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
-
-### Hyperparameters:
-- `temperature`: 0.5
-- `top_k`: 40
-- `repeat_penalty`: 1.05
 
 </div>
 
@@ -186,14 +180,6 @@ Write me a short story about alien abduction.
 
 </div>
 
-<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
-
-### Hyperparameters:
-- `temperature`: 0.5
-- `top_k`: 40
-- `repeat_penalty`: 1.05
-
-</div>
 
 <div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
@@ -224,7 +210,11 @@ Write me a short story about alien abduction.
 ---
 
 ## Example 3: Code Generation
-
+### ⚙️ Hyperparameters:
+- `temperature`: 0.2
+- `top_k`: 30
+- `top_p`: 0.8
+- `repeat_penalty`: 1.05
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
 
 ### Prompt:
@@ -234,15 +224,6 @@ Write me a python function to print "Hello, world!".
 
 </div>
 
-<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; border-radius: 5px; margin: 10px 0;">
-
-### ⚙️ Hyperparameters:
-- `temperature`: 0.2
-- `top_k`: 30
-- `top_p`: 0.8
-- `repeat_penalty`: 1.05
-
-</div>
 
 <div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
