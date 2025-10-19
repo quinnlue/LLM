@@ -14,6 +14,7 @@ class InferenceEngine:
         self.model = model
         self.tokenizer = tokenizer
         self.model.is_training = False  # Set to eval mode
+        self.is_cuda = xp.__name__ == "cupy"
         
     @classmethod
     def from_checkpoint(cls, checkpoint_path, tokenizer, vocab_size, d_model, max_seq_len, 
@@ -90,7 +91,9 @@ class InferenceEngine:
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             logits = logits / temperature
-            logits_np = logits.data[0]
+
+            logits_np = xp.asnumpy(logits.data[0]) if self.is_cuda else logits.data[0]
+            
             if top_k is not None:
                 top_k_idx = np.argpartition(logits_np, -top_k)[-top_k:]
                 mask = np.full_like(logits_np, -float('inf'))
@@ -98,16 +101,16 @@ class InferenceEngine:
                 logits_np = mask
             
             # Sample from distribution
-            probs = xp.exp(logits_np - xp.max(logits_np))
-            probs = probs / xp.sum(probs)
-            next_token = xp.random.choice(len(probs), p=xp.asnumpy(probs))
+            probs = np.exp(logits_np - np.max(logits_np))
+            probs = probs / np.sum(probs)
+            next_token = np.random.choice(len(probs), p=probs)
             if stream:
-                print(self.tokenizer.decode(xp.asnumpy(next_token)), end="", flush=True)
+                print(self.tokenizer.decode(next_token), end="", flush=True)
             # Append to sequence
-            next_token_array = xp.array([[next_token]], dtype=xp.int32)
-            idx = xp.concatenate([idx, next_token_array], axis=1)
+            next_token_array = np.array([[next_token]], dtype=np.int32)
+            idx = np.concatenate([idx, next_token_array], axis=1)
 
-            if xp.asnumpy(next_token) == self.tokenizer.token_to_id("[EOS]"):
+            if next_token == self.tokenizer.token_to_id("[EOS]"):
                 break
 
             
