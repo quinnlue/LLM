@@ -54,6 +54,7 @@ class Model(Module):
         self.lora_r = lora_r
         self.lora_alpha = lora_alpha
         self.head_dim = d_model // n_heads
+        self.vocab_size = vocab_size
 
         # VARIABLES ---------------------------------------
         self.best_val_loss = float("inf")
