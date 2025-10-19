@@ -16,7 +16,10 @@ class InferenceEngine:
         self.tokenizer = tokenizer
         self.model.is_training = False
         self.is_cuda = xp.__name__ == "cupy"
-        
+        self.prompter_id = tokenizer.token_to_id("<prompter>")
+        self.assistant_id = tokenizer.token_to_id("<assistant>")
+        self.eos_id = tokenizer.token_to_id("<eos>")
+
     @classmethod
     def from_checkpoint(cls, checkpoint_path, tokenizer, vocab_size, d_model, max_seq_len, 
                        pad_idx, n_heads, transformer_depth, mlp_ratio=4, lora=False, lora_r=8, lora_alpha=8):
@@ -140,7 +143,9 @@ class InferenceEngine:
             Generated text as string
         """
         # Encode prompt
-        encoded = self.tokenizer.encode(prompt)
+        encoded = [self.prompter_id] + self.tokenizer.encode(prompt) + [self.assistant_id]
+
+
         if repeat_penalty is not None:
             repeated_mask = np.zeros((self.model.vocab_size,), dtype=np.bool_)
             repeated_mask[encoded.ids] = True
@@ -186,8 +191,6 @@ class InferenceEngine:
             next_token_array = xp.array([[next_token]], dtype=xp.int32)
             if stream:
                 print(self.tokenizer.decode(xp.asnumpy(next_token_array[0]).tolist()), end="", flush=True)
-                if current_position % 25 == 0:
-                    print()
             idx = xp.concatenate([idx, next_token_array], axis=1)
 
             if next_token == self.tokenizer.token_to_id("[EOS]"):
