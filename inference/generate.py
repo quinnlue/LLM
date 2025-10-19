@@ -98,16 +98,16 @@ class InferenceEngine:
                 logits_np = mask
             
             # Sample from distribution
-            probs = np.exp(logits_np - np.max(logits_np))
-            probs = probs / np.sum(probs)
-            next_token = np.random.choice(len(probs), p=probs)
+            probs = xp.exp(logits_np - xp.max(logits_np))
+            probs = probs / xp.sum(probs)
+            next_token = xp.random.choice(len(probs), p=xp.asnumpy(probs))
             if stream:
-                print(self.tokenizer.decode(next_token), end="", flush=True)
+                print(self.tokenizer.decode(xp.asnumpy(next_token)), end="", flush=True)
             # Append to sequence
-            next_token_array = np.array([[next_token]], dtype=np.int32)
-            idx = np.concatenate([idx, next_token_array], axis=1)
+            next_token_array = xp.array([[next_token]], dtype=xp.int32)
+            idx = xp.concatenate([idx, next_token_array], axis=1)
 
-            if next_token == self.tokenizer.token_to_id("[EOS]"):
+            if xp.asnumpy(next_token) == self.tokenizer.token_to_id("[EOS]"):
                 break
 
             
