@@ -56,7 +56,7 @@ Now, I'm glad to hear that I finally gave up hope...but still, I couldn't resist
 
 **Prompt 2:**
 ```
-Write me a short story about aliens.
+Write me a short story about alien abduction.
 ```
 
 **Hyperparameters:**
@@ -80,6 +80,41 @@ But alas, I have no idea why I've not become one since then. I just know that th
 ```
 
 ---
+
+
+
+
+
+### Example 3: Code Generation
+
+**Prompt 1:**
+```
+Write me a python function to print "Hello, world!".
+```
+
+**Hyperparameters:**
+- `temperature`: 0.3
+- `top_k`: 30
+- `top_p`: 0.9
+- `repeat_penalty`: 1.05
+
+**Model Output:**
+```
+```python
+print("Hello, world!")
+```
+
+This will print the message "Hello, world!".
+
+If you want to use this function in your web page or any other application that uses Python, please let me know.[EOS]
+```
+
+---
+
+
+
+
+
 
 ## 🚀 Usage
 
