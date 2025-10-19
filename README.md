@@ -1,10 +1,87 @@
 <div align="center">
 
-# Sample Generation
-
-*Explore the capabilities of our fine-tuned model with these diverse examples*
+# GPT-1 Fine-tuned Model
 
 </div>
+
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; color: white; margin: 30px 0; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+
+## Quick Start
+
+<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+
+### Live Notebook Available
+
+🔗 **[Try it on Google Colab](https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing)**
+
+*Click the link above to test the model's generation capabilities interactively*
+
+**What you'll find:**
+- Live inference
+- Adjustable hyperparameters  
+- Multiple use cases (Q&A, creative writing, code generation)
+
+</div>
+
+</div>
+
+---
+
+## Model Architecture & Training Details
+
+This GPT-1 model is a decoder-only transformer trained from scratch on a single NVIDIA A40 GPU (48GB VRAM). The model was trained in two stages: pretraining on OpenWebText followed by instruction fine-tuning on OpenAssistant OASST2.
+
+### Model Architecture
+
+- **Architecture**: Decoder-only transformer with 12 layers
+- **Model dimension**: 1024
+- **Attention heads**: 16 (64-dim per head)
+- **MLP ratio**: 4x (4096 hidden dimension)
+- **Max sequence length**: 512 tokens
+- **Vocabulary size**: 51,682 tokens (custom BPE tokenizer)
+- **Total parameters**: ~250M (base model)
+- **Special tokens**: `[PAD]` (0), `[UNK]` (1), `[EOS]` (2)
+
+### Training Configuration
+
+#### Pretraining (OpenWebText)
+- **Dataset**: [OpenWebText](https://huggingface.co/datasets/Skylion007/openwebtext) (~8.8B tokens)
+- **Duration**: ~40 hours (1 epoch)
+- **Batch size**: 48 sequences per batch
+- **Gradient accumulation**: 4 steps (effective batch size: 192)
+- **Optimizer**: AdamW (β₁=0.9, β₂=0.95, weight_decay=0.0)
+- **Learning rate**: Cosine decay (3e-4 → 1e-6) with 3% warmup
+- **Precision**: Mixed precision (FP16 compute, FP32 master weights)
+- **Dropout**: 0.0 (no dropout used)
+
+#### Fine-tuning (LoRA on OASST2)
+- **Dataset**: [OpenAssistant OASST2](https://huggingface.co/datasets/OpenAssistant/oasst2) (~50M tokens)
+- **Duration**: ~70 minutes (1 epoch)
+- **Method**: LoRA
+  - Rank (r): 8, Alpha: 8
+  - Trainable parameters: ~15M
+  - Applied to: Q, K, V, O projections + MLP up/down projections
+- **Frozen weights**: All base parameters except special token embeddings
+- **Loss masking**: Only compute loss on assistant responses
+- **Batch size**: 64 sequences
+- **Learning rate**: 1e-4 → 1e-6 with cosine decay
+
+### Training Results
+
+- **Final pretraining validation perplexity**: 18.17
+- **Final fine-tuned validation perplexity**: 8.05
+
+### Intended Use & Limitations
+**Intended Use Cases:**
+- General question answering and conversational interactions
+- Educational content generation and explanations
+- Creative writing assistance
+
+**Limitations:**
+- **Parameter count**: As a 250M parameter model, it has horrible specific factual recall
+- **Specialized tasks**: Not optimized for domain-specific tasks like medical advice, legal counsel, or financial planning
+- **Bias and safety**: Has not been fine-tuned for safety
+- **Context length**: Limited to 512 tokens maximum context, restricting long-form conversations or document analysis
 
 ---
 
@@ -127,7 +204,7 @@ But alas, I have no idea why I've not become one since then. I just know that th
 
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
 
-### 📝 Prompt:
+### Prompt:
 ```text
 Write me a python function to print "Hello, world!".
 ```
@@ -146,7 +223,7 @@ Write me a python function to print "Hello, world!".
 
 <div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
 
-### 🤖 Model Output:
+### Model Output:
 ``````
 ```python
 print("Hello, world!")
@@ -159,24 +236,3 @@ If you want to use this function in your web page or any other application that 
 
 </div>
 
----
-
-<div align="center">
-
-## Usage
-
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; color: white; margin: 30px 0; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-
-### Interactive Notebook Available
-
-<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
-
-🔗 **[Try it on Google Colab](https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing)**
-
-*Click the link above to test the model's generation capabilities interactively*
-
-</div>
-
-</div>
-
-</div>
