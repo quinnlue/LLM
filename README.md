@@ -125,7 +125,40 @@ effects, and some people may still gain weight or gain muscle mass.
 However, it's important to be aware of your own body and to plan ahead!
 ```
 </div>
+### Prompt 2:
+```text
+How can I develop better habits for learning new skills?.
+```
 
+</div>
+
+
+<div style="background: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; border-radius: 5px; margin: 10px 0;">
+
+### Model Output:
+
+
+    To develop a more effective and sustainable habit, it is essential to practice regularly. 
+    This includes:
+
+    - Setting goals that are achievable in advance of the task at hand - such as improving 
+    your own fitness level or reducing stress on others;
+    - developing an attitude towards self-care and responsibility when necessary (such as 
+    avoiding unnecessary work);
+    - setting clear expectations about what works best for you based on personal needs rather 
+    than external factors like income or health;
+    - taking time to focus on important areas of your life while working toward achieving those 
+    goals; and finally, implementing appropriate strategies with minimal effort.
+
+    In addition, there may be opportunities for improvement through deliberate efforts by 
+    individuals who have been successful using these methods successfully. This could include 
+    making changes yourself if needed without having any prior knowledge regarding how to 
+    improve oneself.
+
+
+
+
+</div>
 ---
 
 ## Example 2: Creative Writing
