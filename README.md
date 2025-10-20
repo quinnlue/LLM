@@ -77,14 +77,14 @@ This GPT-1 model is a decoder-only transformer trained from scratch on a single 
 ### Intended Use & Limitations
 **Intended Use Cases:**
 - General question answering and conversational interactions
-- Educational content generation and explanations
-- Creative writing assistance
+- Creative writing 
 
 **Limitations:**
+- **Context length**: Limited to 512 absolute positionally encoded tokens.
 - **Parameter count**: As a 250M parameter model, it has horrible specific factual recall
 - **Specialized tasks**: Not optimized for domain-specific tasks like medical advice, legal counsel, or financial planning
 - **Bias and safety**: Has not been fine-tuned for safety
-- **Context length**: Limited to 512 tokens maximum context, restricting long-form conversations or document analysis
+
 
 ---
 

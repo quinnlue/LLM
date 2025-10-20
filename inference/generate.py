@@ -167,6 +167,9 @@ class InferenceEngine:
 
 
         for _ in range(max_new_tokens):
+            if current_position >= self.model.max_seq_len:
+                print("\nOutside of context length, stopping generation")
+                break
             logits = self.model.forward(idx, kv_cache, current_position)
             logits = logits[:, -1, :]
             
