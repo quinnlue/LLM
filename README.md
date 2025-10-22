@@ -1,6 +1,6 @@
 <div align="center">
 
-# GPT-1 Fine-tuned Model
+# 250m Parameter LLM
 
 </div>
 
@@ -32,7 +32,7 @@
 
 ## Model Architecture & Training Details
 
-This GPT-1 model is a decoder-only transformer trained from scratch on a single NVIDIA A40 GPU (48GB VRAM). The model was trained in two stages: pretraining on OpenWebText followed by instruction fine-tuning on OpenAssistant OASST2.
+This autoregressive language model is a decoder-only transformer trained from scratch on a single NVIDIA A40 GPU (48GB VRAM). The model was trained in two stages: pretraining on OpenWebText followed by instruction fine-tuning on OpenAssistant OASST2.
 
 ### Model Architecture
 
