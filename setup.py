@@ -1,14 +1,14 @@
 """
-Setup script for GPT-1 training project.
+Setup script for LLM training project.
 """
 
 from setuptools import setup, find_packages
 
 setup(
-    name="gpt1",
+    name="LLM",
     version="0.1.0",
-    description="A personal GPT-1 training project",
-    author="Your Name",
+    description="A personal LLM training project",
+    author="Quinn Lue",
     packages=find_packages(),
     python_requires=">=3.8",
     install_requires=[

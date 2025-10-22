@@ -1,23 +1,23 @@
 import sys
 import os
 
-sys.path.append(r"gpt1")
+sys.path.append(r"LLM")
 
 import dlx as dlx
 from dlx import AdamW, xp
 from dlx.utils import LRScheduler
-from gpt1.preprocess.dataloader import DataLoader
-from gpt1.tokenizer.tokenizer import tokenizer
-from gpt1.training.model import Model
+from LLM.preprocess.dataloader import DataLoader
+from LLM.tokenizer.tokenizer import tokenizer
+from LLM.training.model import Model
 from dlx.nn.losses import CrossEntropyWithLogits
 import time
 from tqdm import tqdm
-from gpt1.training.utils import ProgressBarManager
+from LLM.training.utils import ProgressBarManager
 from pathlib import Path
 from dlx.utils.logger import train_logger, val_logger
-from gpt1.training.utils import RunningLossTracker
+from LLM.training.utils import RunningLossTracker
 
-from gpt1.training.train import (
+from LLM.training.train import (
     VOCAB_SIZE,
     D_MODEL,
     MAX_SEQ_LEN,

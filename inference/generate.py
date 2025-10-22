@@ -5,7 +5,7 @@ import heapq
 import dlx as dlx
 from dlx import xp
 from dlx.nn.tensor import Tensor
-from gpt1.training.model import Model
+from LLM.training.model import Model
 from dlx.nn.optim import AdamW
 import numpy as np
 
@@ -208,9 +208,9 @@ class InferenceEngine:
 if __name__ == "__main__":
     from tokenizers import Tokenizer
     
-    # Example usage
+    # Usage example
     CHECKPOINT_PATH = "checkpoints/pretraining"
-    TOKENIZER_PATH = "tokenizer/tokenizer.json"  # Adjust to your tokenizer path
+    TOKENIZER_PATH = "tokenizer/tokenizer.json"
     
     # Load tokenizer
     print("Loading tokenizer...")

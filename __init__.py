@@ -1,11 +1,11 @@
 """
-GPT-1 Training Project
+LLM Training Project
 
-A personal project for training GPT-1 style models.
+A personal project for training LLM models.
 """
 
 __version__ = "0.1.0"
-__author__ = "Your Name"
+__author__ = "Quinn Lue"
 
 # Import main components for easy access
 from .training.model import Model

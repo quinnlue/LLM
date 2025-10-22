@@ -1,5 +1,5 @@
 """
-Data preprocessing module for GPT-1 project.
+Data preprocessing module for LLM project.
 """
 
 from .dataloader import DataLoader, Dataset

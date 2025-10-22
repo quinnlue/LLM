@@ -1,5 +1,5 @@
 """
-Tokenizer module for GPT-1 project.
+Tokenizer module for LLM project.
 """
 
 from .tokenizer import tokenizer

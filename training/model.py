@@ -4,8 +4,8 @@ import dlx as dlx
 from dlx import Module, CrossEntropyWithLogits, xp
 from dlx.utils import train_logger, val_logger
 from dlx.nn.optim import Optimizer
-from gpt1.preprocess.dataloader import DataLoader
-from gpt1.tokenizer.tokenizer import tokenizer
+from LLM.preprocess.dataloader import DataLoader
+from LLM.tokenizer.tokenizer import tokenizer
 from tqdm import tqdm
 import time
 from datetime import datetime

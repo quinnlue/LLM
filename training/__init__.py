@@ -1,5 +1,5 @@
 """
-Training module for GPT-1 project.
+Training module for LLM project.
 """
 
 from .model import Model

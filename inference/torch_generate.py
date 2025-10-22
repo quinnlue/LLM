@@ -1,10 +1,10 @@
 """
 Simple text-generation script that re-uses the Transformer architecture
-defined in `gpt1/torch_train/model.py`.
+defined in `LLM/torch_train/model.py`.
 
 Usage
 -----
-python -m gpt1.inference.generate \
+python -m LLM.inference.generate \
     --prompt "Once upon a time" \
     --max_new_tokens 120 \
     --temperature 0.8 \
@@ -12,7 +12,7 @@ python -m gpt1.inference.generate \
 
 Notes
 -----
-- If `--checkpoint` is not provided, the most recent file in `gpt1/checkpoints/`
+- If `--checkpoint` is not provided, the most recent file in `LLM/checkpoints/`
   will be used automatically.
 """
 
@@ -24,11 +24,11 @@ import torch
 import pandas as pd
 
 # ─── project deps ──────────────────────────────────────────────────────────────
-from gpt1.torch_train.train import (
+from LLM.torch_train.train import (
     VOCAB_SIZE, D_MODEL, N_HEADS, DEPTH, MAX_SEQ_LEN, PAD_IDX,
 )
-from gpt1.torch_train.model import Model as TransformerLM
-from gpt1.tokenizer.tokenizer import tokenizer
+from LLM.torch_train.model import Model as TransformerLM
+from LLM.tokenizer.tokenizer import tokenizer
 
 
 try:
@@ -182,7 +182,7 @@ def main() -> None:
     parser.add_argument(
         "--checkpoint",
         default=None,
-        help="Path to .pt checkpoint. If omitted, the latest in gpt1/checkpoints is used.",
+        help="Path to .pt checkpoint. If omitted, the latest in LLM/checkpoints is used.",
     )
     parser.add_argument(
         "--checkpoint_dir",
