@@ -12,7 +12,7 @@
 
 ### Live Notebook Available 
 
-- **[Try it on Google Colab](https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing)**
+- \>>> **[Try it on Google Colab](https://colab.research.google.com/drive/1E46Cxuv1t-DuYMuZeB0BnQ4IjMIzaft4?usp=sharing)** <<<
 
 - **[Jump to Example Generations](#example-1-general-qa)**
 
