@@ -230,7 +230,7 @@ Write me a short story about alien abduction.
     bizarrely fantastical my thoughts were than they should be at any moment.
 
     And then I remembered something: my mind is so fucking crazy because of these strange 
-    reatures living inside our bodies....and yet we're still mesmerized with them now!!!!!
+    creatures living inside our bodies....and yet we're still mesmerized with them now!!!!!
 
     So yeah, I loved reading books back then -- especially those that told stories about 
     aliens or supernatural beings from the past!
